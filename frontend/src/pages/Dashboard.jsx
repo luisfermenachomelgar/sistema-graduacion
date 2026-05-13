@@ -17,9 +17,12 @@ const Dashboard = () => {
   const { isDark } = useTheme();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [postulantesRecientes, setPostulantesRecientes] = useState([]);
+  const [barChartData, setBarChartData] = useState();
+  const [lineChartData, setLineChartData] = useState();
+  const [pieChartData, setPieChartData] = useState();
+  const [metrics, setMetrics] = useState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const postulantesColumns = [
     {
@@ -52,28 +55,68 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
+  const fetchDashboardStatsInBackground = async (token) => {
+    try {
+      const response = await fetch('/api/reportes/dashboard-general/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cargar dashboard');
+      }
+
+      const data = await response.json();
+      setDashboardStats(data);
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Obtener datos del dashboard
-      const dashboardResult = await api.getAll(API_CONFIG.ENDPOINTS.DASHBOARD_GENERAL);
-      
-      if (dashboardResult.success) {
-        setDashboardStats(dashboardResult.data);
-      } else {
-        throw new Error(dashboardResult.error || 'Error al cargar dashboard');
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No se encontró sesión autenticada');
       }
 
-      // Obtener postulantes recientes (primeros 5)
-      const postulantesResult = await api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, { limit: 5 });
-      
+      const [postulantesResult, chartResponse] = await Promise.all([
+        api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, { limit: 5 }),
+        fetch('/api/reportes/dashboard-chart-data/?meses=6', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      ]);
+
+      fetchDashboardStatsInBackground(token);
+
       if (postulantesResult.success) {
-        const data = Array.isArray(postulantesResult.data) 
-          ? postulantesResult.data 
+        const data = Array.isArray(postulantesResult.data)
+          ? postulantesResult.data
           : postulantesResult.data.results || [];
         setPostulantesRecientes(data.slice(0, 5));
+      }
+
+      if (chartResponse.ok) {
+        const chartData = await chartResponse.json();
+        setBarChartData(chartData.barChartData);
+        setLineChartData(chartData.lineChartData);
+        setPieChartData(chartData.pieChartData);
+        setMetrics({
+          tasaAprobacion: chartData.tasa_aprobacion ?? 0,
+          promedioProcesamiento: chartData.promedio_procesamiento_dias ?? 0,
+          satisfaccion: chartData.satisfaccion_score ?? 'N/A',
+          proyeccionMes: chartData.proyeccion_mes_porcentaje ?? 0,
+        });
+      } else {
+        console.error('Error cargando gráficos:', chartResponse.status);
       }
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -85,7 +128,6 @@ const Dashboard = () => {
 
   const handleRefresh = async () => {
     await fetchDashboardData();
-    setRefreshKey(prev => prev + 1);
   };
 
   return (
@@ -131,36 +173,44 @@ const Dashboard = () => {
           <SkeletonLoader />
         )}
 
-        {!loading && dashboardStats && (
+        {!loading && (
           <>
             {/* Tarjetas de Estadísticas */}
-            <StatsCards
-              stats={{
-                totalPostulantes: {
-                  value: dashboardStats.total_postulantes || 0,
-                  change: dashboardStats.cambio_postulantes_porcentaje || 0,
-                  color: 'blue',
-                },
-                documentosPendientes: {
-                  value: dashboardStats.documentos_pendientes || 0,
-                  change: dashboardStats.cambio_documentos_porcentaje || 0,
-                  color: 'yellow',
-                },
-                graduados: {
-                  value: dashboardStats.total_titulados || 0,
-                  change: dashboardStats.cambio_titulados_porcentaje || 0,
-                  color: 'green',
-                },
-                tasaAprobacion: {
-                  value: dashboardStats.tasa_aprobacion || 0,
-                  change: dashboardStats.cambio_tasa_porcentaje || 0,
-                  color: 'purple',
-                },
-              }}
-            />
+            {dashboardStats && (
+              <StatsCards
+                stats={{
+                  totalPostulantes: {
+                    value: dashboardStats.total_postulantes || 0,
+                    change: dashboardStats.cambio_postulantes_porcentaje || 0,
+                    color: 'blue',
+                  },
+                  documentosPendientes: {
+                    value: dashboardStats.documentos_pendientes || 0,
+                    change: dashboardStats.cambio_documentos_porcentaje || 0,
+                    color: 'yellow',
+                  },
+                  graduados: {
+                    value: dashboardStats.total_titulados || 0,
+                    change: dashboardStats.cambio_titulados_porcentaje || 0,
+                    color: 'green',
+                  },
+                  tasaAprobacion: {
+                    value: dashboardStats.tasa_aprobacion || 0,
+                    change: dashboardStats.cambio_tasa_porcentaje || 0,
+                    color: 'purple',
+                  },
+                }}
+              />
+            )}
 
             {/* Gráficos */}
-            <Charts isDark={isDark} refreshKey={refreshKey} />
+            <Charts
+              isDark={isDark}
+              barChartData={barChartData}
+              lineChartData={lineChartData}
+              pieChartData={pieChartData}
+              metrics={metrics}
+            />
 
             {/* Tabla de Postulantes Recientes */}
             {postulantesRecientes.length > 0 && (

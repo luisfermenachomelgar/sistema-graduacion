@@ -1,176 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-const Charts = ({ isDark = false, refreshKey = 0 }) => {
-  // === MOCK DATA (respaldo) ===
-  const mockBarChartData = [
-    { semana: 'Sem 1', postulantes: 45, documentos: 38 },
-    { semana: 'Sem 2', postulantes: 52, documentos: 48 },
-    { semana: 'Sem 3', postulantes: 38, documentos: 35 },
-    { semana: 'Sem 4', postulantes: 61, documentos: 55 },
-    { semana: 'Sem 5', postulantes: 58, documentos: 52 },
-    { semana: 'Sem 6', postulantes: 72, documentos: 68 },
-  ];
+const mockBarChartData = [
+  { semana: 'Sem 1', postulantes: 45, documentos: 38 },
+  { semana: 'Sem 2', postulantes: 52, documentos: 48 },
+  { semana: 'Sem 3', postulantes: 38, documentos: 35 },
+  { semana: 'Sem 4', postulantes: 61, documentos: 55 },
+  { semana: 'Sem 5', postulantes: 58, documentos: 52 },
+  { semana: 'Sem 6', postulantes: 72, documentos: 68 },
+];
 
-  const mockLineChartData = [
-    { mes: 'Ene', graduados: 45, pendientes: 120, aprobados: 95 },
-    { mes: 'Feb', graduados: 72, pendientes: 98, aprobados: 142 },
-    { mes: 'Mar', graduados: 98, pendientes: 76, aprobados: 165 },
-    { mes: 'Abr', graduados: 125, pendientes: 62, aprobados: 189 },
-    { mes: 'May', graduados: 145, pendientes: 48, aprobados: 210 },
-    { mes: 'Jun', graduados: 156, pendientes: 42, aprobados: 248 },
-  ];
+const mockLineChartData = [
+  { mes: 'Ene', graduados: 45, pendientes: 120, aprobados: 95 },
+  { mes: 'Feb', graduados: 72, pendientes: 98, aprobados: 142 },
+  { mes: 'Mar', graduados: 98, pendientes: 76, aprobados: 165 },
+  { mes: 'Abr', graduados: 125, pendientes: 62, aprobados: 189 },
+  { mes: 'May', graduados: 145, pendientes: 48, aprobados: 210 },
+  { mes: 'Jun', graduados: 156, pendientes: 42, aprobados: 248 },
+];
 
-  const mockPieChartData = [
-    { name: 'Completado', value: 45, color: '#10b981' },
-    { name: 'En Proceso', value: 30, color: '#f59e0b' },
-    { name: 'Por Revisar', value: 15, color: '#3b82f6' },
-    { name: 'Rechazado', value: 10, color: '#ef4444' },
-  ];
+const mockPieChartData = [
+  { name: 'Completado', value: 45, color: '#10b981' },
+  { name: 'En Proceso', value: 30, color: '#f59e0b' },
+  { name: 'Por Revisar', value: 15, color: '#3b82f6' },
+  { name: 'Rechazado', value: 10, color: '#ef4444' },
+];
 
-  // === ESTADO: datos vacíos hasta que backend los cargue ===
-  const [barChartData, setBarChartData] = useState([]);
-  const [lineChartData, setLineChartData] = useState([]);
-  const [pieChartData, setPieChartData] = useState([]);
-  
-  // === ESTADO: Métricas de dashboard (NUEVAS - FASE 3) ===
-  const [metrics, setMetrics] = useState({
+const Charts = ({
+  isDark = false,
+  barChartData = mockBarChartData,
+  lineChartData = mockLineChartData,
+  pieChartData = mockPieChartData,
+  metrics = {
     tasaAprobacion: 0,
     promedioProcesamiento: 0,
-    satisfaccion: "N/A",  // ← IMPORTANTE: N/A por defecto, no 0
+    satisfaccion: 'N/A',
     proyeccionMes: 0,
-  });
-
-  // === EFECTO: obtener datos reales del backend ===
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          console.error('❌ [CHARTS] NO TOKEN AVAILABLE - Critical error');
-          return;
-        }
-
-        console.log('═════════════════════════════════════════════');
-        console.log('🔄 [CHARTS] INICIANDO FETCH DE DATOS');
-        console.log('═════════════════════════════════════════════');
-        
-        // === FETCH 1: Chart Data ===
-        const chartResponse = await fetch('/api/reportes/dashboard-chart-data/?meses=6', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log('📡 [CHARTS] Chart Response.status:', chartResponse.status);
-
-        if (chartResponse.ok) {
-          const data = await chartResponse.json();
-          
-          console.log('📦 [CHARTS] RESPUESTA DEL BACKEND COMPLETA:');
-          console.log('   - data.pieChartData:', data.pieChartData);
-          console.log('   - data.barChartData:', data.barChartData);
-          console.log('   - data.lineChartData:', data.lineChartData);
-          
-          // ===== PIE CHART =====
-          if (data.pieChartData && Array.isArray(data.pieChartData) && data.pieChartData.length > 0) {
-            console.log('✅ [PIE] Backend devuelve pieChartData válido');
-            console.log('   - Primer elemento:', data.pieChartData[0]);
-            console.log('   - Total elementos:', data.pieChartData.length);
-            
-            setPieChartData(data.pieChartData);
-            console.log('✅ [PIE] setPieChartData ejecutado');
-          } else {
-            console.error('❌ [PIE] Backend NO devuelve pieChartData válido o está vacío');
-            console.log('   - data.pieChartData tipo:', typeof data.pieChartData);
-            console.log('   - Es array?:', Array.isArray(data.pieChartData));
-            console.log('   - Longitud:', data.pieChartData?.length);
-          }
-          
-          // ===== BAR CHART =====
-          if (data.barChartData && Array.isArray(data.barChartData) && data.barChartData.length > 0) {
-            console.log('✅ [BAR] Backend devuelve barChartData válido');
-            console.log('   - Total elementos:', data.barChartData.length);
-            setBarChartData(data.barChartData);
-            console.log('✅ [BAR] setBarChartData ejecutado');
-          } else {
-            console.error('❌ [BAR] Backend NO devuelve barChartData válido');
-          }
-          
-          // ===== LINE CHART =====
-          if (data.lineChartData && Array.isArray(data.lineChartData) && data.lineChartData.length > 0) {
-            console.log('✅ [LINE] Backend devuelve lineChartData válido');
-            console.log('   - Total elementos:', data.lineChartData.length);
-            setLineChartData(data.lineChartData);
-            console.log('✅ [LINE] setLineChartData ejecutado');
-          } else {
-            console.error('❌ [LINE] Backend NO devuelve lineChartData válido');
-          }
-          
-          console.log('═════════════════════════════════════════════');
-          console.log('✅ [CHARTS] FETCH DE GRÁFICOS COMPLETADO EXITOSAMENTE');
-          console.log('═════════════════════════════════════════════');
-        } else {
-          console.error('❌ [CHARTS] Chart Backend error - Status:', chartResponse.status);
-          const errorData = await chartResponse.json();
-          console.log('   - Error details:', errorData);
-        }
-
-        // === FETCH 2: Métricas de Dashboard (NUEVAS - FASE 3) ===
-        console.log('═════════════════════════════════════════════');
-        console.log('📊 [METRICS] CARGANDO MÉTRICAS DEL BACKEND');
-        console.log('═════════════════════════════════════════════');
-        
-        const metricsResponse = await fetch('/api/reportes/dashboard-general/', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (metricsResponse.ok) {
-          const metricsData = await metricsResponse.json();
-          
-          console.log('✅ [METRICS] Datos recibidos del backend:');
-          console.log('   - tasa_aprobacion:', metricsData.tasa_aprobacion || 0);
-          console.log('   - promedio_procesamiento_dias:', metricsData.promedio_procesamiento_dias || 0);
-          console.log('   - satisfaccion_score:', metricsData.satisfaccion_score || 0);
-          console.log('   - proyeccion_mes_porcentaje:', metricsData.proyeccion_mes_porcentaje || 0);
-          
-          // Establecer métricas con valores del backend (o valores por defecto si no disponible)
-          setMetrics({
-            tasaAprobacion: metricsData.tasa_aprobacion || 0,
-            promedioProcesamiento: metricsData.promedio_procesamiento_dias || 0,
-            satisfaccion: metricsData.satisfaccion_score || "N/A",  // N/A si sin datos
-            proyeccionMes: metricsData.proyeccion_mes_porcentaje || 0,
-          });
-          
-          console.log('✅ [METRICS] Métricas actualizadas en el componente');
-          console.log('═════════════════════════════════════════════');
-        } else {
-          console.error('❌ [METRICS] Error cargando métricas - Status:', metricsResponse.status);
-          setMetrics({
-            tasaAprobacion: 0,
-            promedioProcesamiento: 0,
-            satisfaccion: "N/A",  // N/A como valor por defecto en error
-            proyeccionMes: 0,
-          });
-        }
-        
-      } catch (error) {
-        console.error('❌ [CHARTS] EXCEPCIÓN EN FETCH');
-        console.error('   - Mensaje:', error.message);
-        console.error('   - Stack:', error.stack);
-      }
-    };
-
-    fetchChartData();
-  }, [refreshKey]);
-
+  },
+}) => {
   // === ESTILO (sin cambios) ===
   const chartColors = {
     textColor: isDark ? '#e5e7eb' : '#374151',
