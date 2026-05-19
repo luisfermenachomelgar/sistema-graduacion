@@ -34,7 +34,7 @@ print("-" * 60)
 
 total_postulaciones = Postulacion.objects.count()
 total_documentos = DocumentoPostulacion.objects.count()
-
+            
 print(f"   Total Postulaciones: {total_postulaciones}")
 print(f"   Total Documentos: {total_documentos}")
 
