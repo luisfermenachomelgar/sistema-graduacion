@@ -6,7 +6,6 @@
 import { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import DataTable from '../components/DataTable';
-import TableSkeleton from '../components/TableSkeleton';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
 import Modal from '../components/Modal';
@@ -27,8 +26,7 @@ const INITIAL_FORM_DATA = {
   facultad: '',
 };
 
-// Simple cache local al módulo para mantener el último estado visible
-let cachedPostulantes = null;
+// NOTE: cache removed - rely on useCrud state directly
 
 const Postulantes = () => {
   const {
@@ -45,50 +43,46 @@ const Postulantes = () => {
   } = useCrud(API_CONFIG.ENDPOINTS.POSTULANTES);
   const { user } = useAuth();
 
-  const resolveRole = () => {
-    if (user?.role) return user.role;
-    if (user?.is_superuser === true) return 'admin';
-    return null;
-  };
-
-  const effectiveRole = resolveRole();
+  const effectiveRole = user?.role ?? (user?.is_superuser ? 'admin' : null);
   const isStudent = effectiveRole === 'estudiante';
+  const canManagePostulantes = !isStudent;
   const [success, setSuccess] = useState('');
 
   const [usuarios, setUsuarios] = useState([]);
-  // Estado para render inmediato que reutiliza la última lista visible
-  const [visiblePostulantes, setVisiblePostulantes] = useState(() => cachedPostulantes || null);
+  // No usamos caché local; confiamos en `postulantes` del hook
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
     INITIAL_FORM_DATA
   );
 
   useEffect(() => {
-    // Load dropdowns in background (secondary)
-    fetchUsuarios();
-    // Load main table with local loader (no global overlay)
-    list({}, { requestConfig: { skipGlobalLoader: true } });
-  }, []);
+    const load = async () => {
+      // Carga principal de postulantes
+      const result = await list({}, { requestConfig: { skipGlobalLoader: true } });
 
-  // Cuando cambian los datos reales, sincronizamos el visible y la cache
-  useEffect(() => {
-    if (Array.isArray(postulantes)) {
-      setVisiblePostulantes(postulantes);
-      cachedPostulantes = postulantes;
-    }
-  }, [postulantes]);
-
-  const fetchUsuarios = async () => {
-    try {
-      const result = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS, {}, { skipGlobalLoader: true });
-      if (result.success) {
-        const data = Array.isArray(result.data) ? result.data : result.data.results || [];
-        setUsuarios(data);
+      // Si el backend responde 403 para estudiantes, ocultamos el mensaje técnico
+      if (!result.success && isStudent && result.status === 403) {
+        setError('');
       }
-    } catch (err) {
-      console.error('Error loading usuarios:', err);
-    }
-  };
+
+      // Cargar catálogo de usuarios solo si el rol puede gestionar
+      if (canManagePostulantes) {
+        try {
+          const usuariosRes = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS, {}, { skipGlobalLoader: true });
+          if (usuariosRes.success) {
+            const data = Array.isArray(usuariosRes.data) ? usuariosRes.data : usuariosRes.data.results || [];
+            setUsuarios(data);
+          }
+        } catch (err) {
+          console.error('Error loading usuarios:', err);
+        }
+      }
+    };
+
+    load();
+  }, [canManagePostulantes, isStudent, list, setError]);
+
+  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -222,7 +216,7 @@ const Postulantes = () => {
               Administra los postulantes del sistema
             </p>
           </div>
-          {!isStudent && (
+          {canManagePostulantes && (
             <button
               onClick={() => openModal()}
               className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
@@ -237,114 +231,169 @@ const Postulantes = () => {
         {error && <Alert type="error" message={error} onClose={() => setError('')} autoClose={false} />}
         {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
-        {/* Tabla */}
-        {(loading && (!visiblePostulantes || visiblePostulantes.length === 0)) && (
-          <TableSkeleton rows={10} columns={6} />
+        {isStudent && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-100">
+            <p className="font-medium">Vista de solo lectura</p>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Tu cuenta puede consultar postulantes asociados, pero no crear, editar ni eliminar registros.
+            </p>
+          </div>
         )}
 
-        <DataTable
-          data={visiblePostulantes || postulantes || []}
-          columns={columns}
-          pageSize={10}
-          onEdit={!isStudent ? (row) => openModal({
-            ...row,
-            usuario: row.usuario_id || row.usuario || '',
-          }) : undefined}
-          onDelete={!isStudent ? handleDelete : undefined}
-        />
+        {/* Tabla */}
+        {loading ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-500 dark:text-gray-400">Cargando postulantes...</p>
+            </div>
+          </div>
+        ) : (
+          // Cuando no está cargando, mostramos tabla o estado vacío (según rol y datos)
+          (isStudent && (!postulantes || postulantes.length === 0)) ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">No hay postulantes visibles</p>
+              <p className="mt-2 text-sm">Cuando existan postulantes asociados a tu cuenta, aparecerán aquí sin mostrar acciones administrativas.</p>
+            </div>
+          ) : (
+            <DataTable
+              data={postulantes || []}
+              columns={columns}
+              pageSize={10}
+              onEdit={canManagePostulantes ? (row) => openModal({
+                ...row,
+                usuario: row.usuario_id || row.usuario || '',
+              }) : undefined}
+              onDelete={canManagePostulantes ? handleDelete : undefined}
+            />
+          )
         )}
 
         {/* Modal */}
         <Modal
           isOpen={isOpen}
-          title={isEditMode ? '✏️ Editar Postulante' : '➕ Nuevo Postulante'}
+          title={isEditMode ? 'Editar Postulante' : 'Nuevo Postulante'}
           onSubmit={handleSubmit}
           onClose={closeModal}
           submitText={isEditMode ? 'Actualizar' : 'Crear'}
           isLoading={isSubmitting}
         >
-          <form className="space-y-4">
-            <FormField
-              label="Nombre"
-              name="nombre"
-              type="text"
-              value={formData.nombre}
-              onChange={handleInputChange}
-              placeholder="Juan"
-              required
-            />
+          <div className="space-y-5">
+            {/* Información Personal */}
+            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información personal</h3>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos básicos del postulante.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Nombre"
+                  name="nombre"
+                  type="text"
+                  value={formData.nombre}
+                  onChange={handleInputChange}
+                  placeholder="Juan"
+                  required
+                />
+                <FormField
+                  label="Apellido"
+                  name="apellido"
+                  type="text"
+                  value={formData.apellido}
+                  onChange={handleInputChange}
+                  placeholder="Perez"
+                  required
+                />
+                <FormField
+                  label="CI"
+                  name="ci"
+                  type="text"
+                  value={formData.ci}
+                  onChange={handleInputChange}
+                  placeholder="12345678"
+                  required
+                  className="sm:col-span-2"
+                />
+              </div>
+            </section>
 
-            <FormField
-              label="Apellido"
-              name="apellido"
-              type="text"
-              value={formData.apellido}
-              onChange={handleInputChange}
-              placeholder="Perez"
-              required
-            />
+            {/* Información Académica */}
+            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información académica</h3>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos de formación y carrera.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Código de Estudiante"
+                  name="codigo_estudiante"
+                  type="text"
+                  value={formData.codigo_estudiante}
+                  onChange={handleInputChange}
+                  placeholder="202412345"
+                  required
+                />
+                <FormField
+                  label="Carrera"
+                  name="carrera"
+                  type="text"
+                  value={formData.carrera}
+                  onChange={handleInputChange}
+                  placeholder="Ingeniería"
+                />
+                <FormField
+                  label="Facultad"
+                  name="facultad"
+                  type="text"
+                  value={formData.facultad}
+                  onChange={handleInputChange}
+                  placeholder="Facultad de Tecnología"
+                  className="sm:col-span-2"
+                />
+              </div>
+            </section>
 
-            <FormField
-              label="Teléfono"
-              name="telefono"
-              type="text"
-              value={formData.telefono}
-              onChange={handleInputChange}
-              placeholder="70000000"
-              required
-            />
+            {/* Información de Contacto */}
+            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información de contacto</h3>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos para comunicación.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                <FormField
+                  label="Teléfono"
+                  name="telefono"
+                  type="text"
+                  value={formData.telefono}
+                  onChange={handleInputChange}
+                  placeholder="70000000"
+                  required
+                />
+              </div>
+            </section>
 
-            <FormField
-              label="CI"
-              name="ci"
-              type="text"
-              value={formData.ci}
-              onChange={handleInputChange}
-              placeholder="12345678"
-              required
-            />
-
-            <FormField
-              label="Código de Estudiante"
-              name="codigo_estudiante"
-              type="text"
-              value={formData.codigo_estudiante}
-              onChange={handleInputChange}
-              placeholder="202412345"
-              required
-            />
-
-            <FormField
-              label="Carrera"
-              name="carrera"
-              type="text"
-              value={formData.carrera}
-              onChange={handleInputChange}
-              placeholder="Ingenieria"
-            />
-
-            <FormField
-              label="Facultad"
-              name="facultad"
-              type="text"
-              value={formData.facultad}
-              onChange={handleInputChange}
-              placeholder="Facultad de Tecnologia"
-            />
-
-            <FormField
-              label="Usuario"
-              name="usuario"
-              type="select"
-              value={formData.usuario}
-              onChange={handleInputChange}
-              options={usuarios.map((user) => ({
-                id: user.id,
-                label: `${user.username} - ${user.first_name || ''} ${user.last_name || ''}`.trim(),
-              }))}
-              required
-            />
-          </form>
+            {/* Información del Sistema */}
+            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información del sistema</h3>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Configuración y acceso al sistema.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                <FormField
+                  label="Usuario"
+                  name="usuario"
+                  type="select"
+                  value={formData.usuario}
+                  onChange={handleInputChange}
+                  options={usuarios.map((user) => ({
+                    id: user.id,
+                    label: `${user.username} - ${user.first_name || ''} ${user.last_name || ''}`.trim(),
+                  }))}
+                  required
+                />
+              </div>
+            </section>
+          </div>
         </Modal>
       </div>
   );
