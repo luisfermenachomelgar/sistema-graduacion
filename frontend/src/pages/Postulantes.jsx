@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import useAuth from '../hooks/useAuth';
 import DataTable from '../components/DataTable';
 import TableSkeleton from '../components/TableSkeleton';
 import api from '../api/api';
@@ -42,6 +43,16 @@ const Postulantes = () => {
     patch,
     remove,
   } = useCrud(API_CONFIG.ENDPOINTS.POSTULANTES);
+  const { user } = useAuth();
+
+  const resolveRole = () => {
+    if (user?.role) return user.role;
+    if (user?.is_superuser === true) return 'admin';
+    return null;
+  };
+
+  const effectiveRole = resolveRole();
+  const isStudent = effectiveRole === 'estudiante';
   const [success, setSuccess] = useState('');
 
   const [usuarios, setUsuarios] = useState([]);
@@ -211,13 +222,15 @@ const Postulantes = () => {
               Administra los postulantes del sistema
             </p>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
-          >
-            <Plus className="w-5 h-5" />
-            Nuevo Postulante
-          </button>
+          {!isStudent && (
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
+            >
+              <Plus className="w-5 h-5" />
+              Nuevo Postulante
+            </button>
+          )}
         </div>
 
         {/* Alertas */}
@@ -231,16 +244,14 @@ const Postulantes = () => {
 
         <DataTable
           data={visiblePostulantes || postulantes || []}
-            columns={columns}
-            pageSize={10}
-            onEdit={(row) =>
-              openModal({
-                ...row,
-                usuario: row.usuario_id || row.usuario || '',
-              })
-            }
-            onDelete={handleDelete}
-          />
+          columns={columns}
+          pageSize={10}
+          onEdit={!isStudent ? (row) => openModal({
+            ...row,
+            usuario: row.usuario_id || row.usuario || '',
+          }) : undefined}
+          onDelete={!isStudent ? handleDelete : undefined}
+        />
         )}
 
         {/* Modal */}

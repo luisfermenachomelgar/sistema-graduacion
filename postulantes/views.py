@@ -42,6 +42,16 @@ class PostulanteViewSet(viewsets.ModelViewSet):
     ordering = ['id']
     permission_classes = [PostulanteRolePermission]
 
+    def get_permissions(self):
+        """
+        Permisos dinámicos: permitir lectura a usuarios autenticados (PostulanteRolePermission),
+        pero requerir permisos de modelo Django para acciones de escritura (CRUDModelPermission).
+        Esto evita que un `estudiante` realice POST/PUT/PATCH/DELETE aunque intente llamar directamente.
+        """
+        if self.request and self.request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+            return [CRUDModelPermission()]
+        return [PostulanteRolePermission()]
+
     def get_queryset(self):
         queryset = super().get_queryset()
         if can_view_all_postulantes(self.request.user):
@@ -71,6 +81,15 @@ class PostulacionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['fecha_postulacion', 'gestion']
     ordering = ['-fecha_postulacion']
     permission_classes = [PostulacionRolePermission]
+
+    def get_permissions(self):
+        """
+        Permisos dinámicos equivalentes a PostulanteViewSet: lectura por rol/propiedad,
+        escrituras protegidas por permisos de modelo.
+        """
+        if self.request and self.request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+            return [CRUDModelPermission()]
+        return [PostulacionRolePermission()]
 
     def get_queryset(self):
         queryset = super().get_queryset()

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import useAuth from '../hooks/useAuth';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
@@ -53,6 +54,16 @@ const Postulaciones = () => {
     patch,
     remove,
   } = useCrud(API_CONFIG.ENDPOINTS.POSTULACIONES);
+  const { user } = useAuth();
+
+  const resolveRole = () => {
+    if (user?.role) return user.role;
+    if (user?.is_superuser === true) return 'admin';
+    return null;
+  };
+
+  const effectiveRole = resolveRole();
+  const isStudent = effectiveRole === 'estudiante';
   // Usamos useSearchParams solo para inicializar el filtro local
   const [searchParams] = useSearchParams();
   const [postulantes, setPostulantes] = useState([]);
@@ -237,12 +248,14 @@ const Postulaciones = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Postulaciones</h1>
-        <button
-          onClick={() => openModal()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow"
-        >
-          ➕ Nueva Postulación
-        </button>
+        {!isStudent && (
+          <button
+            onClick={() => openModal()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow"
+          >
+            ➕ Nueva Postulación
+          </button>
+        )}
       </div>
 
       {/* Alerts */}
@@ -286,15 +299,13 @@ const Postulaciones = () => {
         <Table
           columns={columns}
           data={postulaciones}
-        loading={loading}
-        onEdit={(row) =>
-          openModal({
+          loading={loading}
+          onEdit={!isStudent ? (row) => openModal({
             ...row,
             postulante_id: row.postulante?.id || '',
-          })
-        }
-        onDelete={handleDelete}
-      />
+          }) : undefined}
+          onDelete={!isStudent ? handleDelete : undefined}
+        />
       )}
 
       {(meta.previous || meta.next || meta.count > 0) && (

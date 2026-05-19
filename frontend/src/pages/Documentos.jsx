@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import useAuth from '../hooks/useAuth';
 import DataTable from '../components/DataTable';
 import TableSkeleton from '../components/TableSkeleton';
 import api from '../api/api';
@@ -41,6 +42,16 @@ const Documentos = () => {
     patch,
     remove,
   } = useCrud(API_CONFIG.ENDPOINTS.DOCUMENTOS);
+  const { user } = useAuth();
+
+  const resolveRole = () => {
+    if (user?.role) return user.role;
+    if (user?.is_superuser === true) return 'admin';
+    return null;
+  };
+
+  const effectiveRole = resolveRole();
+  const isStudent = effectiveRole === 'estudiante';
   
   const [success, setSuccess] = useState('');
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -237,17 +248,19 @@ const Documentos = () => {
               Administra los documentos de postulación
             </p>
           </div>
-          <button
-            onClick={() => {
-              setFormData(INITIAL_FORM_DATA);
-              setArchivoFile(null);
-              openModal();
-            }}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
-          >
-            <Plus className="w-5 h-5" />
-            Nuevo Documento
-          </button>
+          {!isStudent && (
+            <button
+              onClick={() => {
+                setFormData(INITIAL_FORM_DATA);
+                setArchivoFile(null);
+                openModal();
+              }}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
+            >
+              <Plus className="w-5 h-5" />
+              Nuevo Documento
+            </button>
+          )}
         </div>
 
         {/* Alertas */}
@@ -272,12 +285,12 @@ const Documentos = () => {
             data={documentos || []}
             columns={columns}
             pageSize={10}
-            onEdit={(row) => {
+            onEdit={!isStudent ? (row) => {
               setFormData(row);
               setArchivoFile(null);
               openModal();
-            }}
-            onDelete={handleDelete}
+            } : undefined}
+            onDelete={!isStudent ? handleDelete : undefined}
           />
         )}
 
