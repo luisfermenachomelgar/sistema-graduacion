@@ -32,7 +32,8 @@ const Modalidades = () => {
   });
 
   useEffect(() => {
-    list({}, { exceptionMessage: 'Error loading modalidades' });
+    // Load main grid with local loader (no global overlay)
+    list({}, { requestConfig: { skipGlobalLoader: true }, exceptionMessage: 'Error loading modalidades' });
   }, [list]);
 
   const resetForm = () => {
@@ -137,11 +138,7 @@ const Modalidades = () => {
       {error && <Alert type="error" message={error} autoClose={false} />}
       {success && <Alert type="success" message={success} />}
 
-      {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
+      {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {modalidades.length > 0 ? (
             modalidades.map((modalidad) => (

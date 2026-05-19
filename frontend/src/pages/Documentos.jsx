@@ -53,14 +53,15 @@ const Documentos = () => {
 
   useEffect(() => {
     fetchDropdownData();
-    list({});
+    // Load main table with local loader (no global overlay)
+    list({}, { requestConfig: { skipGlobalLoader: true } });
   }, []);
 
   const fetchDropdownData = async () => {
     try {
       const [tiposRes, postRes] = await Promise.all([
-        api.getAll(API_CONFIG.ENDPOINTS.TIPOS_DOCUMENTO),
-        api.getAll(API_CONFIG.ENDPOINTS.POSTULACIONES),
+        api.getAll(API_CONFIG.ENDPOINTS.TIPOS_DOCUMENTO, {}, { skipGlobalLoader: true }),
+        api.getAll(API_CONFIG.ENDPOINTS.POSTULACIONES, {}, { skipGlobalLoader: true }),
       ]);
 
       if (tiposRes.success) {

@@ -34,7 +34,7 @@ const Reportes = () => {
         endpoint = API_CONFIG.ENDPOINTS.EFICIENCIA_CARRERAS;
       }
 
-      const result = await api.getAll(endpoint);
+      const result = await api.getAll(endpoint, {}, { skipGlobalLoader: true });
 
       if (result.success) {
         setReportData(result.data);

@@ -71,13 +71,15 @@ const Postulaciones = () => {
 
   useEffect(() => {
     fetchData();
+    // Load main table with local loader (no global overlay)
+    list({}, { requestConfig: { skipGlobalLoader: true } });
   }, []);
 
   const fetchData = async () => {
     try {
       const [postResult, modResult] = await Promise.all([
-        api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES),
-        api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES),
+        api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, {}, { skipGlobalLoader: true }),
+        api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES, {}, { skipGlobalLoader: true }),
       ]);
 
       if (postResult.success) {

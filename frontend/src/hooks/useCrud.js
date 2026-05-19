@@ -20,7 +20,7 @@ export const useCrud = (listEndpoint) => {
       lastParamsRef.current = params;
       setLoading(true);
       try {
-        const result = await api.getAll(listEndpoint, params);
+        const result = await api.getAll(listEndpoint, params, options.requestConfig || {});
         if (result.success) {
           const normalized = normalizeList(result.data);
           setData(normalized);
@@ -57,10 +57,10 @@ export const useCrud = (listEndpoint) => {
     [list]
   );
 
-  const create = useCallback(async (payload) => api.create(listEndpoint, payload), [listEndpoint]);
-  const update = useCallback(async (endpoint, payload) => api.update(endpoint, payload), []);
-  const patch = useCallback(async (endpoint, payload) => api.patch(endpoint, payload), []);
-  const remove = useCallback(async (endpoint) => api.delete(endpoint), []);
+  const create = useCallback(async (payload, requestConfig = {}) => api.create(listEndpoint, payload, requestConfig), [listEndpoint]);
+  const update = useCallback(async (endpoint, payload, requestConfig = {}) => api.update(endpoint, payload, requestConfig), []);
+  const patch = useCallback(async (endpoint, payload, requestConfig = {}) => api.patch(endpoint, payload, requestConfig), []);
+  const remove = useCallback(async (endpoint, requestConfig = {}) => api.delete(endpoint, requestConfig), []);
 
   return {
     data,

@@ -41,6 +41,7 @@ const Usuarios = () => {
   const { search, setSearch, page, setPage } = useListFilters(list, {}, {
     errorMessage: 'Error al cargar usuarios',
     exceptionMessage: 'Error loading usuarios',
+    requestConfig: { skipGlobalLoader: true },
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

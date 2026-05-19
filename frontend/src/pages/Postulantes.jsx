@@ -26,6 +26,9 @@ const INITIAL_FORM_DATA = {
   facultad: '',
 };
 
+// Simple cache local al módulo para mantener el último estado visible
+let cachedPostulantes = null;
+
 const Postulantes = () => {
   const {
     data: postulantes,
@@ -42,19 +45,31 @@ const Postulantes = () => {
   const [success, setSuccess] = useState('');
 
   const [usuarios, setUsuarios] = useState([]);
+  // Estado para render inmediato que reutiliza la última lista visible
+  const [visiblePostulantes, setVisiblePostulantes] = useState(() => cachedPostulantes || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
     INITIAL_FORM_DATA
   );
 
   useEffect(() => {
+    // Load dropdowns in background (secondary)
     fetchUsuarios();
-    list({});
+    // Load main table with local loader (no global overlay)
+    list({}, { requestConfig: { skipGlobalLoader: true } });
   }, []);
+
+  // Cuando cambian los datos reales, sincronizamos el visible y la cache
+  useEffect(() => {
+    if (Array.isArray(postulantes)) {
+      setVisiblePostulantes(postulantes);
+      cachedPostulantes = postulantes;
+    }
+  }, [postulantes]);
 
   const fetchUsuarios = async () => {
     try {
-      const result = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS);
+      const result = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS, {}, { skipGlobalLoader: true });
       if (result.success) {
         const data = Array.isArray(result.data) ? result.data : result.data.results || [];
         setUsuarios(data);
@@ -115,12 +130,12 @@ const Postulantes = () => {
       };
 
       const result = isEditMode
-        ? await patch(endpoint, payload)
-        : await create(payload);
+        ? await patch(endpoint, payload, { skipGlobalLoader: true })
+        : await create(payload, { skipGlobalLoader: true });
 
       if (result.success) {
         setSuccess(isEditMode ? 'Postulante actualizado exitosamente' : 'Postulante creado exitosamente');
-        await refresh({});
+        await refresh({ requestConfig: { skipGlobalLoader: true } });
         closeModal();
       } else {
         setError(result.error || 'Error en la operación');
@@ -139,10 +154,10 @@ const Postulantes = () => {
     setSuccess('');
 
     try {
-      const result = await remove(API_CONFIG.ENDPOINTS.POSTULANTE_DETAIL(postulante.id));
+      const result = await remove(API_CONFIG.ENDPOINTS.POSTULANTE_DETAIL(postulante.id), { skipGlobalLoader: true });
       if (result.success) {
         setSuccess('Postulante eliminado exitosamente');
-        await refresh({});
+        await refresh({ requestConfig: { skipGlobalLoader: true } });
       } else {
         setError(result.error || 'Error al eliminar');
       }
@@ -210,13 +225,12 @@ const Postulantes = () => {
         {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
         {/* Tabla */}
-        {loading && (
+        {(loading && (!visiblePostulantes || visiblePostulantes.length === 0)) && (
           <TableSkeleton rows={10} columns={6} />
         )}
 
-        {!loading && (
-          <DataTable
-            data={postulantes || []}
+        <DataTable
+          data={visiblePostulantes || postulantes || []}
             columns={columns}
             pageSize={10}
             onEdit={(row) =>

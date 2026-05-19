@@ -45,10 +45,14 @@ const getErrorMessage = (status, fallbackMessage) => {
  */
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Show global loader
-    const loader = getLoaderInstance();
-    if (loader?.increment) {
-      loader.increment();
+    const skipGlobalLoader = config?.skipGlobalLoader === true;
+
+    // Show global loader only for requests that opt in
+    if (!skipGlobalLoader) {
+      const loader = getLoaderInstance();
+      if (loader?.increment) {
+        loader.increment();
+      }
     }
     
     const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
@@ -69,10 +73,12 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    // Hide loader on request error
-    const loader = getLoaderInstance();
-    if (loader?.decrement) {
-      loader.decrement();
+    // Hide loader on request error unless it was silenced
+    if (!error?.config?.skipGlobalLoader) {
+      const loader = getLoaderInstance();
+      if (loader?.decrement) {
+        loader.decrement();
+      }
     }
     return Promise.reject(error);
   }
@@ -86,18 +92,22 @@ axiosInstance.interceptors.request.use(
  */
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Hide loader on successful response
-    const loader = getLoaderInstance();
-    if (loader?.decrement) {
-      loader.decrement();
+    // Hide loader on successful response unless it was silenced
+    if (!response?.config?.skipGlobalLoader) {
+      const loader = getLoaderInstance();
+      if (loader?.decrement) {
+        loader.decrement();
+      }
     }
     return response;
   },
   async (error) => {
-    // Hide loader on error
-    const loader = getLoaderInstance();
-    if (loader?.decrement) {
-      loader.decrement();
+    // Hide loader on error unless it was silenced
+    if (!error?.config?.skipGlobalLoader) {
+      const loader = getLoaderInstance();
+      if (loader?.decrement) {
+        loader.decrement();
+      }
     }
 
     const originalRequest = error.config;

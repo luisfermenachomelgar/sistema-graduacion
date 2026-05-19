@@ -13,15 +13,31 @@ import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
 import { AlertCircle } from 'lucide-react';
 
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
+
+let dashboardCache = {
+  token: null,
+  timestamp: 0,
+  dashboardStats: null,
+  postulantesRecientes: [],
+  barChartData: null,
+  lineChartData: null,
+  pieChartData: null,
+  metrics: null,
+};
+
 const Dashboard = () => {
   const { isDark } = useTheme();
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [postulantesRecientes, setPostulantesRecientes] = useState([]);
-  const [barChartData, setBarChartData] = useState();
-  const [lineChartData, setLineChartData] = useState();
-  const [pieChartData, setPieChartData] = useState();
-  const [metrics, setMetrics] = useState();
-  const [loading, setLoading] = useState(true);
+  const hasCachedContent = dashboardCache.timestamp > 0;
+  const isCacheFresh = hasCachedContent && Date.now() - dashboardCache.timestamp <= DASHBOARD_CACHE_TTL;
+
+  const [dashboardStats, setDashboardStats] = useState(dashboardCache.dashboardStats);
+  const [postulantesRecientes, setPostulantesRecientes] = useState(dashboardCache.postulantesRecientes || []);
+  const [barChartData, setBarChartData] = useState(dashboardCache.barChartData);
+  const [lineChartData, setLineChartData] = useState(dashboardCache.lineChartData);
+  const [pieChartData, setPieChartData] = useState(dashboardCache.pieChartData);
+  const [metrics, setMetrics] = useState(dashboardCache.metrics);
+  const [loading, setLoading] = useState(!isCacheFresh);
   const [error, setError] = useState('');
 
   const postulantesColumns = [
@@ -55,6 +71,58 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
+  const normalizePostulantes = (data) => {
+    const normalized = Array.isArray(data) ? data : data?.results || [];
+    return normalized.slice(0, 5);
+  };
+
+  const normalizeMetrics = (chartData) => ({
+    tasaAprobacion: chartData.tasa_aprobacion ?? 0,
+    promedioProcesamiento: chartData.promedio_procesamiento_dias ?? 0,
+    satisfaccion: chartData.satisfaccion_score ?? 'N/A',
+    proyeccionMes: chartData.proyeccion_mes_porcentaje ?? 0,
+  });
+
+  const applyCache = (token) => {
+    if (dashboardCache.token && dashboardCache.token !== token) {
+      dashboardCache = {
+        token,
+        timestamp: 0,
+        dashboardStats: null,
+        postulantesRecientes: [],
+        barChartData: null,
+        lineChartData: null,
+        pieChartData: null,
+        metrics: null,
+      };
+      return;
+    }
+
+    if (dashboardCache.dashboardStats) {
+      setDashboardStats(dashboardCache.dashboardStats);
+    }
+
+    if (dashboardCache.postulantesRecientes?.length) {
+      setPostulantesRecientes(dashboardCache.postulantesRecientes);
+    }
+
+    if (dashboardCache.barChartData) {
+      setBarChartData(dashboardCache.barChartData);
+    }
+
+    if (dashboardCache.lineChartData) {
+      setLineChartData(dashboardCache.lineChartData);
+    }
+
+    if (dashboardCache.pieChartData) {
+      setPieChartData(dashboardCache.pieChartData);
+    }
+
+    if (dashboardCache.metrics) {
+      setMetrics(dashboardCache.metrics);
+    }
+  };
+
   const fetchDashboardStatsInBackground = async (token) => {
     try {
       const response = await fetch('/api/reportes/dashboard-general/', {
@@ -70,6 +138,12 @@ const Dashboard = () => {
 
       const data = await response.json();
       setDashboardStats(data);
+      dashboardCache = {
+        ...dashboardCache,
+        token,
+        timestamp: Date.now(),
+        dashboardStats: data,
+      };
     } catch (err) {
       console.error('Error loading dashboard stats:', err);
     }
@@ -77,13 +151,18 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
-      setError('');
-
       const token = localStorage.getItem('access_token');
       if (!token) {
         throw new Error('No se encontró sesión autenticada');
       }
+
+      applyCache(token);
+
+      if (!dashboardCache.timestamp || Date.now() - dashboardCache.timestamp > DASHBOARD_CACHE_TTL) {
+        setLoading(true);
+      }
+
+      setError('');
 
       const [postulantesResult, chartResponse] = await Promise.all([
         api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, { limit: 5 }),
@@ -95,33 +174,43 @@ const Dashboard = () => {
         }),
       ]);
 
-      fetchDashboardStatsInBackground(token);
-
       if (postulantesResult.success) {
-        const data = Array.isArray(postulantesResult.data)
-          ? postulantesResult.data
-          : postulantesResult.data.results || [];
-        setPostulantesRecientes(data.slice(0, 5));
+        const data = normalizePostulantes(postulantesResult.data);
+        setPostulantesRecientes(data);
+        dashboardCache = {
+          ...dashboardCache,
+          token,
+          timestamp: Date.now(),
+          postulantesRecientes: data,
+        };
       }
 
       if (chartResponse.ok) {
         const chartData = await chartResponse.json();
+        const normalizedMetrics = normalizeMetrics(chartData);
         setBarChartData(chartData.barChartData);
         setLineChartData(chartData.lineChartData);
         setPieChartData(chartData.pieChartData);
-        setMetrics({
-          tasaAprobacion: chartData.tasa_aprobacion ?? 0,
-          promedioProcesamiento: chartData.promedio_procesamiento_dias ?? 0,
-          satisfaccion: chartData.satisfaccion_score ?? 'N/A',
-          proyeccionMes: chartData.proyeccion_mes_porcentaje ?? 0,
-        });
+        setMetrics(normalizedMetrics);
+        dashboardCache = {
+          ...dashboardCache,
+          token,
+          timestamp: Date.now(),
+          barChartData: chartData.barChartData,
+          lineChartData: chartData.lineChartData,
+          pieChartData: chartData.pieChartData,
+          metrics: normalizedMetrics,
+        };
       } else {
         console.error('Error cargando gráficos:', chartResponse.status);
       }
+
+      // Load dashboard stats in background WITHOUT blocking UI
+      setLoading(false);
+      fetchDashboardStatsInBackground(token);
     } catch (err) {
       console.error('Error loading dashboard:', err);
       setError(err.message || 'Error al cargar datos del dashboard');
-    } finally {
       setLoading(false);
     }
   };
@@ -169,39 +258,37 @@ const Dashboard = () => {
         )}
 
         {/* Skeleton Loading */}
-        {loading && (
+        {loading && !dashboardCache.timestamp && (
           <SkeletonLoader />
         )}
 
         {!loading && (
           <>
             {/* Tarjetas de Estadísticas */}
-            {dashboardStats && (
-              <StatsCards
-                stats={{
-                  totalPostulantes: {
-                    value: dashboardStats.total_postulantes || 0,
-                    change: dashboardStats.cambio_postulantes_porcentaje || 0,
-                    color: 'blue',
-                  },
-                  documentosPendientes: {
-                    value: dashboardStats.documentos_pendientes || 0,
-                    change: dashboardStats.cambio_documentos_porcentaje || 0,
-                    color: 'yellow',
-                  },
-                  graduados: {
-                    value: dashboardStats.total_titulados || 0,
-                    change: dashboardStats.cambio_titulados_porcentaje || 0,
-                    color: 'green',
-                  },
-                  tasaAprobacion: {
-                    value: dashboardStats.tasa_aprobacion || 0,
-                    change: dashboardStats.cambio_tasa_porcentaje || 0,
-                    color: 'purple',
-                  },
-                }}
-              />
-            )}
+            <StatsCards
+              stats={dashboardStats ? {
+                totalPostulantes: {
+                  value: dashboardStats.total_postulantes || 0,
+                  change: dashboardStats.cambio_postulantes_porcentaje || 0,
+                  color: 'blue',
+                },
+                documentosPendientes: {
+                  value: dashboardStats.documentos_pendientes || 0,
+                  change: dashboardStats.cambio_documentos_porcentaje || 0,
+                  color: 'yellow',
+                },
+                graduados: {
+                  value: dashboardStats.total_titulados || 0,
+                  change: dashboardStats.cambio_titulados_porcentaje || 0,
+                  color: 'green',
+                },
+                tasaAprobacion: {
+                  value: dashboardStats.tasa_aprobacion || 0,
+                  change: dashboardStats.cambio_tasa_porcentaje || 0,
+                  color: 'purple',
+                },
+              } : {}}
+            />
 
             {/* Gráficos */}
             <Charts

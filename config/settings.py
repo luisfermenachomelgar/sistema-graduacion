@@ -92,11 +92,24 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 import dj_database_url
 
-DATABASES = {
-    'default': dj_database_url.parse(
-        "postgresql://sistema_graduacion_postgres_user:6YMHHlwkvVVoXmhrAjjkGNgNDTxfMi6E@dpg-d7h9kg1j2pic7397967g-a.oregon-postgres.render.com:5432/sistema_graduacion_postgres"
-    )
-}
+# Prefer an explicit DATABASE_URL (production / Render). If not set,
+# fall back to the local docker-compose DB configured via env vars.
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'sistema_graduacion'),
+            'USER': os.getenv('POSTGRES_USER', 'sistema_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'sistema_pass'),
+            'HOST': os.getenv('POSTGRES_HOST', 'db'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        }
+    }
 
 
 # Password validation

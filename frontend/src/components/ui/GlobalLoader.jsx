@@ -2,14 +2,16 @@
  * Global Loader Component
  * Displays an overlay with spinner while HTTP requests are in progress
  * Prevents flickering for fast responses (<200ms)
+ * Does NOT show overlay on subsequent background requests if content already visible
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLoader } from '../../context/LoaderContext';
 
 const GlobalLoader = () => {
   const { isLoading } = useLoader();
   const [showLoader, setShowLoader] = useState(false);
+  const hasShownContentRef = useRef(false);
 
   useEffect(() => {
     let timeout;
@@ -17,11 +19,20 @@ const GlobalLoader = () => {
     if (isLoading) {
       // Delay showing loader to prevent flicker on fast responses
       timeout = setTimeout(() => {
-        setShowLoader(true);
+        // Only show loader if we haven't shown content yet
+        if (!hasShownContentRef.current) {
+          setShowLoader(true);
+        }
       }, 200);
     } else {
       // Hide loader immediately
       setShowLoader(false);
+      
+      // Mark that content has been shown
+      if (timeout) {
+        hasShownContentRef.current = true;
+      }
+      
       clearTimeout(timeout);
     }
 

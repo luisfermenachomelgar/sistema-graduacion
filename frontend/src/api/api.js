@@ -13,9 +13,9 @@ class ApiService {
    * @param {object} params - Query parameters
    * @returns {Promise}
    */
-  async getAll(endpoint, params = {}) {
+  async getAll(endpoint, params = {}, requestConfig = {}) {
     try {
-      const response = await axiosInstance.get(endpoint, { params });
+      const response = await axiosInstance.get(endpoint, { params, ...requestConfig });
       return { success: true, data: response.data };
     } catch (error) {
       return this._handleError(error);
@@ -42,9 +42,9 @@ class ApiService {
    * @param {object} data
    * @returns {Promise}
    */
-  async create(endpoint, data) {
+  async create(endpoint, data, requestConfig = {}) {
     try {
-      const response = await axiosInstance.post(endpoint, data);
+      const response = await axiosInstance.post(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {
       return this._handleError(error);
@@ -57,9 +57,9 @@ class ApiService {
    * @param {object} data
    * @returns {Promise}
    */
-  async update(endpoint, data) {
+  async update(endpoint, data, requestConfig = {}) {
     try {
-      const response = await axiosInstance.put(endpoint, data);
+      const response = await axiosInstance.put(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {
       return this._handleError(error);
@@ -72,9 +72,9 @@ class ApiService {
    * @param {object} data
    * @returns {Promise}
    */
-  async patch(endpoint, data) {
+  async patch(endpoint, data, requestConfig = {}) {
     try {
-      const response = await axiosInstance.patch(endpoint, data);
+      const response = await axiosInstance.patch(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {
       return this._handleError(error);
@@ -86,9 +86,9 @@ class ApiService {
    * @param {string} endpoint
    * @returns {Promise}
    */
-  async delete(endpoint) {
+  async delete(endpoint, requestConfig = {}) {
     try {
-      await axiosInstance.delete(endpoint);
+      await axiosInstance.delete(endpoint, requestConfig);
       return { success: true };
     } catch (error) {
       return this._handleError(error);
