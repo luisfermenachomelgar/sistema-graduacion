@@ -16,11 +16,11 @@ import { useCrud } from '../hooks/useCrud';
 import { Plus } from 'lucide-react';
 
 const INITIAL_FORM_DATA = {
+  usuario: '',
   nombre: '',
   apellido: '',
   ci: '',
   codigo_estudiante: '',
-  usuario: '',
   telefono: '',
   carrera: '',
   facultad: '',
@@ -44,12 +44,11 @@ const Postulantes = () => {
   const { user } = useAuth();
 
   const effectiveRole = user?.role ?? (user?.is_superuser ? 'admin' : null);
+  const isAdmin = effectiveRole === 'admin';
   const isStudent = effectiveRole === 'estudiante';
   const canManagePostulantes = !isStudent;
-  const [success, setSuccess] = useState('');
-
   const [usuarios, setUsuarios] = useState([]);
-  // No usamos caché local; confiamos en `postulantes` del hook
+  const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
     INITIAL_FORM_DATA
@@ -64,23 +63,28 @@ const Postulantes = () => {
       if (!result.success && isStudent && result.status === 403) {
         setError('');
       }
-
-      // Cargar catálogo de usuarios solo si el rol puede gestionar
-      if (canManagePostulantes) {
-        try {
-          const usuariosRes = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS, {}, { skipGlobalLoader: true });
-          if (usuariosRes.success) {
-            const data = Array.isArray(usuariosRes.data) ? usuariosRes.data : usuariosRes.data.results || [];
-            setUsuarios(data);
-          }
-        } catch (err) {
-          console.error('Error loading usuarios:', err);
-        }
-      }
     };
 
     load();
   }, [canManagePostulantes, isStudent, list, setError]);
+
+  useEffect(() => {
+    const loadUsuarios = async () => {
+      if (!isAdmin) return;
+
+      try {
+        const result = await api.getAll(API_CONFIG.ENDPOINTS.USUARIOS, {}, { skipGlobalLoader: true });
+        if (result.success) {
+          const data = Array.isArray(result.data) ? result.data : result.data.results || [];
+          setUsuarios(data);
+        }
+      } catch (err) {
+        console.error('Error loading usuarios:', err);
+      }
+    };
+
+    loadUsuarios();
+  }, [isAdmin]);
 
   
 
@@ -109,7 +113,7 @@ const Postulantes = () => {
     
     setFormData({
       ...formData,
-      [name]: name === 'usuario' ? (value ? parseInt(value) : '') : value,
+      [name]: value,
     });
   };
 
@@ -124,11 +128,11 @@ const Postulantes = () => {
         : API_CONFIG.ENDPOINTS.POSTULANTES;
 
       const payload = {
+        ...(isAdmin ? { usuario: formData.usuario ? Number(formData.usuario) : null } : {}),
         nombre: formData.nombre,
         apellido: formData.apellido,
         ci: formData.ci,
         codigo_estudiante: formData.codigo_estudiante,
-        usuario: formData.usuario,
         telefono: formData.telefono,
         carrera: formData.carrera,
         facultad: formData.facultad,
@@ -260,10 +264,7 @@ const Postulantes = () => {
               data={postulantes || []}
               columns={columns}
               pageSize={10}
-              onEdit={canManagePostulantes ? (row) => openModal({
-                ...row,
-                usuario: row.usuario_id || row.usuario || '',
-              }) : undefined}
+              onEdit={canManagePostulantes ? (row) => openModal(isAdmin ? { ...row, usuario: row.usuario_id || '' } : row) : undefined}
               onDelete={canManagePostulantes ? handleDelete : undefined}
             />
           )
@@ -279,6 +280,30 @@ const Postulantes = () => {
           isLoading={isSubmitting}
         >
           <div className="space-y-5">
+            {isAdmin && (
+              <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Asignación de usuario</h3>
+                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Opcional. Puedes vincular el postulante a un usuario existente o dejarlo sin asignar.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                  <FormField
+                    label="Usuario"
+                    name="usuario"
+                    type="select"
+                    value={formData.usuario}
+                    onChange={handleInputChange}
+                    placeholder="Sin usuario asignado"
+                    options={usuarios.map((currentUser) => ({
+                      id: currentUser.id,
+                      label: `${currentUser.username} - ${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim(),
+                    }))}
+                    helperText="Déjalo vacío si el postulante no debe quedar vinculado a un usuario."
+                  />
+                </div>
+              </section>
+            )}
+
             {/* Información Personal */}
             <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
               <div className="mb-4">
@@ -367,28 +392,6 @@ const Postulantes = () => {
                   value={formData.telefono}
                   onChange={handleInputChange}
                   placeholder="70000000"
-                  required
-                />
-              </div>
-            </section>
-
-            {/* Información del Sistema */}
-            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información del sistema</h3>
-                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Configuración y acceso al sistema.</p>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
-                <FormField
-                  label="Usuario"
-                  name="usuario"
-                  type="select"
-                  value={formData.usuario}
-                  onChange={handleInputChange}
-                  options={usuarios.map((user) => ({
-                    id: user.id,
-                    label: `${user.username} - ${user.first_name || ''} ${user.last_name || ''}`.trim(),
-                  }))}
                   required
                 />
               </div>

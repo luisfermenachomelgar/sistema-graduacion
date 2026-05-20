@@ -103,19 +103,32 @@ class ApiService {
     const data = error.response?.data;
     let message = 'An error occurred';
 
+    const stringifyFieldErrors = (errors, prefix = '') => {
+      if (!errors || typeof errors !== 'object' || Array.isArray(errors)) {
+        return [];
+      }
+
+      return Object.entries(errors).flatMap(([key, value]) => {
+        const fieldName = prefix ? `${prefix}.${key}` : key;
+
+        if (Array.isArray(value)) {
+          return value.map((item) => `${fieldName}: ${item}`);
+        }
+
+        if (value && typeof value === 'object') {
+          return stringifyFieldErrors(value, fieldName);
+        }
+
+        return [`${fieldName}: ${value}`];
+      });
+    };
+
     // Prefer serializer field errors if present
     if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const fieldMessages = Object.entries(data)
-        .filter(([key]) => key !== 'detail' && key !== 'message' && key !== 'non_field_errors')
-        .map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return `${key}: ${value.join(', ')}`;
-          }
-          if (value && typeof value === 'object') {
-            return `${key}: ${JSON.stringify(value)}`;
-          }
-          return `${key}: ${value}`;
-        });
+      const fieldSource = data.field_errors || data;
+      const fieldMessages = stringifyFieldErrors(fieldSource).filter((entry) => {
+        return !entry.startsWith('success:') && !entry.startsWith('error:') && !entry.startsWith('timestamp:');
+      });
 
       if (fieldMessages.length > 0) {
         message = fieldMessages.join(' | ');

@@ -32,6 +32,7 @@ const FormField = ({
       case 'select':
         return (
           <select
+            id={name}
             name={name}
             value={value}
             onChange={onChange}
@@ -50,6 +51,7 @@ const FormField = ({
       case 'textarea':
         return (
           <textarea
+            id={name}
             name={name}
             value={value}
             onChange={onChange}
@@ -81,6 +83,7 @@ const FormField = ({
       default:
         return (
           <input
+            id={name}
             type={type}
             name={name}
             value={value}

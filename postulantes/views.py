@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, viewsets
+from rest_framework import filters, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from config.permissions import (
+    CRUDModelPermission,
     PostulanteRolePermission,
     PostulacionRolePermission,
     PuedeAvanzarEtapaPermission,
@@ -57,6 +58,13 @@ class PostulanteViewSet(viewsets.ModelViewSet):
         if can_view_all_postulantes(self.request.user):
             return queryset
         return queryset.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        if can_view_all_postulantes(self.request.user):
+            serializer.save()
+            return
+
+        serializer.save(usuario=self.request.user)
 
 
 class PostulacionViewSet(viewsets.ModelViewSet):

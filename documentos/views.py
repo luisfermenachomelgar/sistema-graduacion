@@ -103,6 +103,9 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
             # Navegar relaciones para obtener datos del estudiante
             postulante = documento.postulacion.postulante
             usuario = postulante.usuario
+
+            if not usuario:
+                return
             
             # Crear notificación en sistema
             Notificacion.objects.create(

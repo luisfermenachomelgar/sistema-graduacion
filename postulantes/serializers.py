@@ -7,8 +7,8 @@ User = get_user_model()
 
 class PostulanteListSerializer(serializers.ModelSerializer):
     """Serializer para listado de postulantes (lectura)."""
-    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
-    usuario_email = serializers.CharField(source='usuario.email', read_only=True)
+    usuario_nombre = serializers.SerializerMethodField()
+    usuario_email = serializers.SerializerMethodField()
     
     class Meta:
         model = Postulante
@@ -18,14 +18,22 @@ class PostulanteListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'creado_en']
 
+    def get_usuario_nombre(self, obj):
+        usuario = getattr(obj, 'usuario', None)
+        return usuario.get_full_name() if usuario else None
+
+    def get_usuario_email(self, obj):
+        usuario = getattr(obj, 'usuario', None)
+        return usuario.email if usuario else None
+
 
 class PostulanteDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado para postulante con información de usuario."""
-    usuario = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    usuario_id = serializers.IntegerField(source='usuario.id', read_only=True)
-    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
-    usuario_email = serializers.CharField(source='usuario.email', read_only=True)
-    usuario_username = serializers.CharField(source='usuario.username', read_only=True)
+    usuario = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    usuario_id = serializers.IntegerField(source='usuario.id', read_only=True, allow_null=True)
+    usuario_nombre = serializers.SerializerMethodField()
+    usuario_email = serializers.SerializerMethodField()
+    usuario_username = serializers.SerializerMethodField()
     
     class Meta:
         model = Postulante
@@ -35,6 +43,18 @@ class PostulanteDetailSerializer(serializers.ModelSerializer):
             'carrera', 'facultad', 'creado_en'
         ]
         read_only_fields = ['id', 'creado_en', 'usuario_id']
+
+    def get_usuario_nombre(self, obj):
+        usuario = getattr(obj, 'usuario', None)
+        return usuario.get_full_name() if usuario else None
+
+    def get_usuario_email(self, obj):
+        usuario = getattr(obj, 'usuario', None)
+        return usuario.email if usuario else None
+
+    def get_usuario_username(self, obj):
+        usuario = getattr(obj, 'usuario', None)
+        return usuario.username if usuario else None
 
 
 class PostulacionListSerializer(serializers.ModelSerializer):

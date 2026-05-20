@@ -3,9 +3,11 @@ from django.db import models
 
 
 class Postulante(models.Model):
-    usuario = models.OneToOneField(
+    usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='perfil_postulante',
     )
     nombre = models.CharField(max_length=150)
