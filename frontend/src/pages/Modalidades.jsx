@@ -9,6 +9,8 @@ import { useCrud } from '../hooks/useCrud';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import FormField from '../components/FormField';
+import { PageHeader, SectionCard } from '../components';
+import { Plus } from 'lucide-react';
 
 const Modalidades = () => {
   const {
@@ -125,49 +127,60 @@ const Modalidades = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Modalidades</h1>
-        <button
-          onClick={() => openModal()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-medium"
-        >
-          ➕ Nueva Modalidad
-        </button>
-      </div>
+      <PageHeader
+        title="Modalidades"
+        description="Gestiona las modalidades de graduación del sistema"
+        action={(
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow transition hover:bg-blue-700"
+          >
+            <Plus className="h-5 w-5" />
+            Nueva Modalidad
+          </button>
+        )}
+      />
 
       {error && <Alert type="error" message={error} autoClose={false} />}
       {success && <Alert type="success" message={success} />}
 
-      {!loading && (
+      {loading ? (
+        <div className="flex h-96 items-center justify-center rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+            <p className="text-gray-500 dark:text-gray-400">Cargando modalidades...</p>
+          </div>
+        </div>
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {modalidades.length > 0 ? (
             modalidades.map((modalidad) => (
-              <div key={modalidad.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-l-4 border-blue-600">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">{modalidad.nombre}</h3>
-                  <span className={`text-xs px-2 py-1 rounded ${modalidad.activa ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+              <SectionCard key={modalidad.id} className="border-l-4 border-l-blue-600">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{modalidad.nombre}</h3>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${modalidad.activa ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                     {modalidad.activa ? '✓ Activa' : '✗ Inactiva'}
                   </span>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 min-h-12">{modalidad.descripcion}</p>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                <p className="mb-4 min-h-12 text-sm text-gray-600 dark:text-gray-400">{modalidad.descripcion}</p>
+                <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
                   Creada: {new Date(modalidad.creada_en).toLocaleDateString()}
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => openModal(modalidad)}
-                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
+                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                   >
-                    ✏️ Editar
+                    Editar
                   </button>
                   <button
                     onClick={() => handleDelete(modalidad.id)}
-                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm font-medium"
+                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
-                    🗑️ Eliminar
+                    Eliminar
                   </button>
                 </div>
-              </div>
+              </SectionCard>
             ))
           ) : (
             <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
@@ -180,44 +193,51 @@ const Modalidades = () => {
       {/* Modal */}
       <Modal
         isOpen={showModal}
-        title={editingId ? '✏️ Editar Modalidad' : '➕ Nueva Modalidad'}
+        title={editingId ? 'Editar Modalidad' : 'Nueva Modalidad'}
         onClose={closeModal}
         onSubmit={handleSubmit}
         submitText={editingId ? 'Actualizar' : 'Crear'}
+        sizeClass="max-w-3xl"
       >
-        <form className="space-y-4">
-          <FormField
-            label="Nombre *"
-            name="nombre"
-            type="text"
-            value={formData.nombre}
-            onChange={handleInputChange}
-            placeholder="Ej: Tesis"
-            required
-          />
+        <div className="space-y-6">
+          <SectionCard title="Información principal" description="Nombre y descripción de la modalidad.">
+            <div className="grid grid-cols-1 gap-4">
+              <FormField
+                label="Nombre *"
+                name="nombre"
+                type="text"
+                value={formData.nombre}
+                onChange={handleInputChange}
+                placeholder="Ej: Tesis"
+                required
+              />
 
-          <FormField
-            label="Descripción"
-            name="descripcion"
-            type="textarea"
-            value={formData.descripcion}
-            onChange={handleInputChange}
-            placeholder="Describe esta modalidad..."
-          />
+              <FormField
+                label="Descripción"
+                name="descripcion"
+                type="textarea"
+                value={formData.descripcion}
+                onChange={handleInputChange}
+                placeholder="Describe esta modalidad..."
+              />
+            </div>
+          </SectionCard>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="activa"
-              checked={formData.activa}
-              onChange={handleInputChange}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <label className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Modalidad activa
-            </label>
-          </div>
-        </form>
+          <SectionCard title="Estado" description="Control de visibilidad de la modalidad.">
+            <div className="flex items-center rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-700/60">
+              <input
+                type="checkbox"
+                name="activa"
+                checked={formData.activa}
+                onChange={handleInputChange}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              />
+              <label className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Modalidad activa
+              </label>
+            </div>
+          </SectionCard>
+        </div>
       </Modal>
     </div>
   );

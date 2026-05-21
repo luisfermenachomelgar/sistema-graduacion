@@ -7,13 +7,20 @@ import { useState, useEffect } from 'react';
 import StatsCards from '../components/StatsCards';
 import Charts from '../components/Charts';
 import DataTable from '../components/DataTable';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { PageHeader } from '../components';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, LoaderCircle } from 'lucide-react';
 
 const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
+
+const DEFAULT_METRICS = {
+  tasaAprobacion: 0,
+  promedioProcesamiento: 0,
+  satisfaccion: 'N/A',
+  proyeccionMes: 0,
+};
 
 let dashboardCache = {
   token: null,
@@ -36,7 +43,7 @@ const Dashboard = () => {
   const [barChartData, setBarChartData] = useState(dashboardCache.barChartData);
   const [lineChartData, setLineChartData] = useState(dashboardCache.lineChartData);
   const [pieChartData, setPieChartData] = useState(dashboardCache.pieChartData);
-  const [metrics, setMetrics] = useState(dashboardCache.metrics);
+  const [metrics, setMetrics] = useState(dashboardCache.metrics || DEFAULT_METRICS);
   const [loading, setLoading] = useState(!isCacheFresh);
   const [error, setError] = useState('');
 
@@ -220,25 +227,21 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6 bg-white/5 dark:bg-white/5 rounded-lg p-6">
-        {/* Encabezado */}
-        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Resumen general del sistema de graduación
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-medium"
-          >
-            {loading ? '🔄 Actualizando...' : '🔄 Actualizar'}
-          </button>
-        </div>
+    <div className="space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Resumen general del sistema de graduación"
+          action={(
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LoaderCircle className="h-4 w-4" />}
+              {loading ? 'Actualizando...' : 'Actualizar'}
+            </button>
+          )}
+        />
 
         {/* Error Alert */}
         {error && (
@@ -257,12 +260,14 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Skeleton Loading */}
-        {loading && !dashboardCache.timestamp && (
-          <SkeletonLoader />
-        )}
-
-        {!loading && (
+        {loading && !dashboardCache.timestamp ? (
+          <div className="flex h-96 items-center justify-center rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+              <p className="text-gray-500 dark:text-gray-400">Cargando dashboard...</p>
+            </div>
+          </div>
+        ) : (
           <>
             {/* Tarjetas de Estadísticas */}
             <StatsCards

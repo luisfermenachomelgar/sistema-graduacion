@@ -35,7 +35,6 @@ const Sidebar = () => {
       icon: FileCheck,
       label: 'Documentos',
       href: '/documentos',
-      badge: 12,
       roles: ['admin', 'administ', 'estudiante'],
     },
     {

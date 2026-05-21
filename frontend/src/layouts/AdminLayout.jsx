@@ -8,7 +8,6 @@
 import { Toaster } from 'react-hot-toast';
 import Header from '../components/Header';
 import SidebarModern from '../components/SidebarModern';
-import GlobalLoader from '../components/ui/GlobalLoader';
 import { SidebarCollapseProvider, useSidebarCollapse } from '../context/SidebarCollapseContext';
 import useAuth from '../hooks/useAuth';
 
@@ -18,9 +17,6 @@ const AdminLayoutContent = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
-      {/* Global Loader */}
-      <GlobalLoader />
-
       {/* Global Notifications */}
       <Toaster
         position="top-right"

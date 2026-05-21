@@ -5,11 +5,12 @@
 
 import { useState } from 'react';
 import { Modal, FormField, Table, Alert } from '../components';
-import TableSkeleton from '../components/TableSkeleton';
+import { PageHeader, SectionCard } from '../components';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
 import { useListFilters } from '../hooks/useListFilters';
 import { API_CONFIG } from '../constants/api';
+import { Plus } from 'lucide-react';
 
 const INITIAL_FORM_DATA = {
   username: '',
@@ -155,18 +156,22 @@ const Usuarios = () => {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
-        <button
-          onClick={() => {
-            setFormData(INITIAL_FORM_DATA);
-            openModal();
-          }}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition font-medium"
-        >
-          + Nuevo Usuario
-        </button>
-      </div>
+      <PageHeader
+        title="Gestión de Usuarios"
+        description="Administra accesos, roles y estado de los usuarios del sistema"
+        action={(
+          <button
+            onClick={() => {
+              setFormData(INITIAL_FORM_DATA);
+              openModal();
+            }}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow transition hover:bg-blue-700"
+          >
+            <Plus className="h-5 w-5" />
+            Nuevo Usuario
+          </button>
+        )}
+      />
 
       {success && <Alert type="success" message={success} />}
       {error && <Alert type="error" message={error} />}
@@ -190,14 +195,11 @@ const Usuarios = () => {
         onClose={closeModal}
         onSubmit={handleSubmit}
         isLoading={isSubmitting}
+        sizeClass="max-w-4xl"
       >
-        <div className="space-y-5">
-          <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información de acceso</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Credenciales para ingreso al sistema.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-6">
+          <SectionCard title="Información de acceso" description="Credenciales para ingreso al sistema.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               <FormField
                 label="Usuario"
                 type="text"
@@ -205,7 +207,7 @@ const Usuarios = () => {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
-                className="sm:col-span-1"
+                className="md:col-span-1"
               />
               <FormField
                 label="Email"
@@ -214,7 +216,7 @@ const Usuarios = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="sm:col-span-1"
+                className="md:col-span-1"
               />
               {!isEditMode && (
                 <FormField
@@ -224,18 +226,14 @@ const Usuarios = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  className="sm:col-span-2"
+                  className="md:col-span-2"
                 />
               )}
             </div>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información personal</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos básicos del usuario.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SectionCard title="Información personal" description="Datos básicos del usuario.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               <FormField
                 label="Nombre"
                 type="text"
@@ -251,14 +249,10 @@ const Usuarios = () => {
                 onChange={handleInputChange}
               />
             </div>
-          </section>
+          </SectionCard>
 
-          <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Permisos y estado</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Nivel de acceso y estado de habilitación.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SectionCard title="Permisos y estado" description="Nivel de acceso y estado de habilitación.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               <FormField
                 label="Rol"
                 type="select"
@@ -272,7 +266,7 @@ const Usuarios = () => {
                 ]}
                 required
               />
-              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-600 dark:bg-gray-700/60">
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-700/60">
                 <FormField
                   label="Usuario activo"
                   type="checkbox"
@@ -282,13 +276,18 @@ const Usuarios = () => {
                 />
               </div>
             </div>
-          </section>
+          </SectionCard>
         </div>
       </Modal>
 
-      {loading && <TableSkeleton rows={10} columns={5} />}
-
-      {!loading && (
+      {loading ? (
+        <div className="flex h-96 items-center justify-center rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+            <p className="text-gray-500 dark:text-gray-400">Cargando usuarios...</p>
+          </div>
+        </div>
+      ) : (
         <Table
           columns={columns}
           data={usuarios}

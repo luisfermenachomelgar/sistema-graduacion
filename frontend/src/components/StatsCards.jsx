@@ -39,17 +39,16 @@ const StatsCards = ({ stats = {} }) => {
     const isPositive = change >= 0;
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-slate-700/50 hover:shadow-xl hover:-translate-y-1 transition-all transition-shadow duration-300 overflow-hidden group transition-opacity duration-500 opacity-0 animate-[fadeIn_.5s_ease-in-out_forwards]">
-        {/* Borde superior degradado */}
-        <div className={`h-0.5 bg-gradient-to-r ${colorClass}`}></div>
+      <div className="group overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className={`h-1 bg-gradient-to-r ${colorClass}`} />
 
         <div className="p-6">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+              <p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                 {title}
               </p>
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              <h3 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
                 {typeof value === 'number' && value > 100 ? value : value}
                 {title.includes('Tasa') ? '%' : ''}
               </h3>
@@ -71,7 +70,7 @@ const StatsCards = ({ stats = {} }) => {
             </div>
 
             {/* Icono */}
-            <div className={`${bgColorClass} p-3 rounded-lg group-hover:scale-110 transition-transform`}>
+            <div className={`${bgColorClass} rounded-xl p-3 transition-transform group-hover:scale-110`}>
               <Icon className="w-6 h-6" />
             </div>
           </div>

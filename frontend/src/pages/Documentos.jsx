@@ -6,12 +6,12 @@
 import { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import DataTable from '../components/DataTable';
-import TableSkeleton from '../components/TableSkeleton';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import Alert from '../components/Alert';
+import { PageHeader, SectionCard } from '../components';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
 import { Plus, AlertCircle } from 'lucide-react';
@@ -238,30 +238,23 @@ const Documentos = () => {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Documentos
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Administra los documentos de postulación
-            </p>
-          </div>
-          {!isStudent && (
-            <button
-              onClick={() => {
-                setFormData(INITIAL_FORM_DATA);
-                setArchivoFile(null);
-                openModal();
-              }}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
-            >
-              <Plus className="w-5 h-5" />
-              Nuevo Documento
-            </button>
-          )}
-        </div>
+      <PageHeader
+        title="Documentos"
+        description="Administra los documentos de postulación"
+        action={!isStudent && (
+          <button
+            onClick={() => {
+              setFormData(INITIAL_FORM_DATA);
+              setArchivoFile(null);
+              openModal();
+            }}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow transition hover:bg-blue-700"
+          >
+            <Plus className="h-5 w-5" />
+            Nuevo Documento
+          </button>
+        )}
+      />
 
         {/* Alertas */}
         {error && <Alert type="error" message={error} onClose={() => setError('')} autoClose={false} />}
@@ -269,18 +262,21 @@ const Documentos = () => {
 
         {/* Aviso si no hay documentos tipos */}
         {tiposDocumento.length === 0 && !loading && (
-          <div className="mb-6 p-4 rounded-lg border flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400">
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <p>Por favor, crea tipos de documento antes de agregar documentos.</p>
           </div>
         )}
 
         {/* Tabla */}
-        {loading && (
-          <TableSkeleton rows={10} columns={4} />
-        )}
-
-        {!loading && (
+        {loading ? (
+          <div className="flex h-96 items-center justify-center rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+              <p className="text-gray-500 dark:text-gray-400">Cargando documentos...</p>
+            </div>
+          </div>
+        ) : (
           <DataTable
             data={documentos || []}
             columns={columns}
@@ -297,76 +293,94 @@ const Documentos = () => {
         {/* Modal */}
         <Modal
           isOpen={isOpen}
-          title={isEditMode ? '✏️ Editar Documento' : '➕ Nuevo Documento'}
+          title={isEditMode ? 'Editar Documento' : 'Nuevo Documento'}
           onSubmit={handleSubmit}
           onClose={closeModal}
           submitText={isEditMode ? 'Actualizar' : 'Crear'}
           isLoading={isSubmitting}
+          sizeClass="max-w-4xl"
         >
-          <form className="space-y-4">
-            <FormField
-              label="Postulación *"
-              name="postulacion"
-              type="select"
-              value={formData.postulacion}
-              onChange={handleInputChange}
-              options={postulaciones.map((p) => ({
-                id: p.id,
-                label: `#${p.id} - Postulación`,
-              }))}
-              required
-            />
+          <div className="space-y-6">
+            <SectionCard
+              title="Información principal"
+              description="Postulación asociada, tipo de documento y estado de revisión."
+            >
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+                <FormField
+                  label="Postulación *"
+                  name="postulacion"
+                  type="select"
+                  value={formData.postulacion}
+                  onChange={handleInputChange}
+                  options={postulaciones.map((p) => ({
+                    id: p.id,
+                    label: `#${p.id} - Postulación`,
+                  }))}
+                  required
+                  className="md:col-span-1"
+                />
 
-            <FormField
-              label="Tipo de Documento *"
-              name="tipo_documento"
-              type="select"
-              value={formData.tipo_documento}
-              onChange={handleInputChange}
-              options={tiposDocumento.map((t) => ({
-                id: t.id,
-                label: t.nombre || t.tipo,
-              }))}
-              required
-            />
+                <FormField
+                  label="Tipo de Documento *"
+                  name="tipo_documento"
+                  type="select"
+                  value={formData.tipo_documento}
+                  onChange={handleInputChange}
+                  options={tiposDocumento.map((t) => ({
+                    id: t.id,
+                    label: t.nombre || t.tipo,
+                  }))}
+                  required
+                  className="md:col-span-1"
+                />
 
-            <FormField
-              label="Estado"
-              name="estado"
-              type="select"
-              value={formData.estado}
-              onChange={handleInputChange}
-              options={ESTADO_DOCUMENTO_OPTIONS}
-            />
+                <FormField
+                  label="Estado"
+                  name="estado"
+                  type="select"
+                  value={formData.estado}
+                  onChange={handleInputChange}
+                  options={ESTADO_DOCUMENTO_OPTIONS}
+                  className="md:col-span-2"
+                />
+              </div>
+            </SectionCard>
 
-            <FormField
-              label="Comentario de Revisión"
-              name="comentario_revision"
-              type="textarea"
-              value={formData.comentario_revision || ''}
-              onChange={handleInputChange}
-              placeholder="Agregar comentarios si es necesario..."
-            />
+            <SectionCard
+              title="Revisión y archivo"
+              description="Comentario opcional para revisión y carga del archivo físico."
+            >
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  label="Comentario de Revisión"
+                  name="comentario_revision"
+                  type="textarea"
+                  value={formData.comentario_revision || ''}
+                  onChange={handleInputChange}
+                  placeholder="Agregar comentarios si es necesario..."
+                />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Archivo de Documento *
-              </label>
-              <input
-                type="file"
-                name="archivo"
-                onChange={handleInputChange}
-                required
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none transition"
-              />
-              {archivoFile && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Archivo seleccionado: {archivoFile.name}
-                </p>
-              )}
-            </div>
-          </form>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Archivo de Documento *
+                  </label>
+                  <input
+                    type="file"
+                    name="archivo"
+                    onChange={handleInputChange}
+                    required
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                  />
+                  {archivoFile && (
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                      Archivo seleccionado: {archivoFile.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+          </div>
         </Modal>
     </div>
   );

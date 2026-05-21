@@ -71,17 +71,17 @@ const DataTable = ({
   // Si no hay columnas ni datos, mostrar tabla vacía
   if (!columns.length) {
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 transition-shadow duration-300 hover:shadow-xl">
+      <div className="rounded-2xl border border-gray-200/80 bg-white dark:bg-gray-800 p-6 text-center text-gray-500 dark:text-gray-400 shadow-sm">
         No hay datos para mostrar
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-shadow duration-300 hover:shadow-xl">
+    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white dark:bg-gray-800 shadow-sm">
       {/* Encabezado con búsqueda */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="border-b border-gray-200/80 px-6 py-5 dark:border-gray-700">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Datos
           </h3>
@@ -95,7 +95,7 @@ const DataTable = ({
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-gray-900 placeholder-gray-500 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
               />
             </div>
           </div>
@@ -111,13 +111,13 @@ const DataTable = ({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <tr className="border-b border-gray-200/80 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-900/80">
               {columns.map((column) => (
                 <th
                   key={column.key}
                   onClick={() => column.sortable && handleSort(column.key)}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider ${
-                    column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800' : ''
+                  className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400 ${
+                    column.sortable ? 'cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-800/80' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ const DataTable = ({
               paginatedData.map((row, idx) => (
                 <tr
                   key={idx}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-700/60"
                 >
                   {columns.map((column) => (
                     <td
@@ -154,7 +154,7 @@ const DataTable = ({
                         {onView && (
                           <button
                             onClick={() => onView(row)}
-                            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                            className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
                             title="Ver"
                           >
                             <Eye className="w-4 h-4" />
@@ -163,7 +163,7 @@ const DataTable = ({
                         {onEdit && (
                           <button
                             onClick={() => onEdit(row)}
-                            className="p-1 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors"
+                            className="rounded-lg p-2 text-amber-600 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20"
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -172,7 +172,7 @@ const DataTable = ({
                         {onDelete && (
                           <button
                             onClick={() => onDelete(row)}
-                            className="p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                            className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                             title="Eliminar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -199,7 +199,7 @@ const DataTable = ({
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="border-t border-gray-200/80 bg-gray-50/80 px-6 py-4 dark:border-gray-700 dark:bg-gray-900/80">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Página {currentPage + 1} de {totalPages} ({sortedData.length} en total)
@@ -209,7 +209,7 @@ const DataTable = ({
               <button
                 onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
                 disabled={currentPage === 0}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors border border-gray-300 dark:border-gray-600"
+                className="rounded-xl border border-gray-300 px-3 py-2 text-gray-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -227,10 +227,10 @@ const DataTable = ({
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded transition-colors ${
+                      className={`rounded-xl px-3 py-1.5 transition-colors ${
                         currentPage === pageNum
                           ? 'bg-blue-600 text-white'
-                          : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 border border-gray-300 dark:border-gray-600'
+                          : 'border border-gray-300 text-gray-600 hover:bg-white dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
                       }`}
                     >
                       {pageNum + 1}
@@ -242,7 +242,7 @@ const DataTable = ({
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
                 disabled={currentPage === totalPages - 1}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors border border-gray-300 dark:border-gray-600"
+                className="rounded-xl border border-gray-300 px-3 py-2 text-gray-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

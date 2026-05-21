@@ -6,12 +6,12 @@
 import { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import { useSearchParams } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import Table from '../components/Table';
-import TableSkeleton from '../components/TableSkeleton';
 import Alert from '../components/Alert';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
@@ -24,6 +24,8 @@ const INITIAL_FORM_DATA = {
   gestion: '',
   estado: 'borrador',
   estado_general: 'EN_PROCESO',
+  tutor: '',
+  observaciones: '',
 };
 
 const ESTADO_OPTIONS = [
@@ -68,11 +70,13 @@ const Postulaciones = () => {
   const [searchParams] = useSearchParams();
   const [postulantes, setPostulantes] = useState([]);
   const [modalidades, setModalidades] = useState([]);
+  const [etapas, setEtapas] = useState([]);
   const [success, setSuccess] = useState('');
   
   const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
 
   const { search, setSearch, page, setPage } = useListFilters(list, { estado: filterEstado }, {
+    requestConfig: { skipGlobalLoader: true },
     errorMessage: 'Error al cargar postulaciones',
     exceptionMessage: 'Error loading postulaciones',
   });
@@ -81,34 +85,41 @@ const Postulaciones = () => {
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(INITIAL_FORM_DATA);
 
   useEffect(() => {
+    const fetchData = async () => {
+      if (isStudent) return;
+
+      try {
+        const [postResult, modResult, etapaResult] = await Promise.all([
+          api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, {}, { skipGlobalLoader: true }),
+          api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES, {}, { skipGlobalLoader: true }),
+          api.getAll(API_CONFIG.ENDPOINTS.ETAPAS, {}, { skipGlobalLoader: true }),
+        ]);
+
+        if (postResult.success) {
+          const postsData = Array.isArray(postResult.data) ? postResult.data : postResult.data.results || [];
+          setPostulantes(postsData);
+        }
+
+        if (modResult.success) {
+          const modsData = Array.isArray(modResult.data) ? modResult.data : modResult.data.results || [];
+          setModalidades(modsData);
+        }
+
+        if (etapaResult.success) {
+          const etapasData = Array.isArray(etapaResult.data) ? etapaResult.data : etapaResult.data.results || [];
+          setEtapas(etapasData);
+        }
+      } catch (err) {
+        console.error('Error loading dropdown data:', err);
+      }
+    };
+
     fetchData();
-    // Load main table with local loader (no global overlay)
-    list({}, { requestConfig: { skipGlobalLoader: true } });
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [postResult, modResult] = await Promise.all([
-        api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, {}, { skipGlobalLoader: true }),
-        api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES, {}, { skipGlobalLoader: true }),
-      ]);
-
-      if (postResult.success) {
-        const postsData = Array.isArray(postResult.data) ? postResult.data : postResult.data.results || [];
-        setPostulantes(postsData);
-      }
-      if (modResult.success) {
-        const modsData = Array.isArray(modResult.data) ? modResult.data : modResult.data.results || [];
-        setModalidades(modsData);
-      }
-    } catch (err) {
-      console.error('Error loading dropdown data:', err);
-    }
-  };
+  }, [isStudent]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const numericFields = ['modalidad', 'postulante_id', 'gestion'];
+    const numericFields = ['modalidad', 'postulante_id', 'gestion', 'etapa_actual'];
     setFormData({
       ...formData,
       [name]: numericFields.includes(name) ? (value ? parseInt(value) : '') : value,
@@ -121,8 +132,8 @@ const Postulaciones = () => {
     setSuccess('');
 
     // Validar campos requeridos (dropdowns)
-    if (!formData.postulante_id || !formData.modalidad || !formData.gestion) {
-      setError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Gestión)');
+    if (!formData.postulante_id || !formData.modalidad || !formData.gestion || !formData.titulo_trabajo) {
+      setError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo y Gestión)');
       setIsSubmitting(false);
       return;
     }
@@ -139,6 +150,9 @@ const Postulaciones = () => {
         estado: formData.estado,
         estado_general: formData.estado_general,
         modalidad: formData.modalidad,
+        etapa_actual: formData.etapa_actual || null,
+        tutor: formData.tutor,
+        observaciones: formData.observaciones,
       };
 
       const result = isEditMode
@@ -246,14 +260,18 @@ const Postulaciones = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Postulaciones</h1>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Postulaciones</h1>
+          <p className="text-gray-600 dark:text-gray-400">Administra las postulaciones del sistema</p>
+        </div>
         {!isStudent && (
           <button
             onClick={() => openModal()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow"
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
           >
-            ➕ Nueva Postulación
+            <Plus className="w-5 h-5" />
+            Nueva Postulación
           </button>
         )}
       </div>
@@ -293,13 +311,17 @@ const Postulaciones = () => {
         </div>
       </div>
 
-      {loading && <TableSkeleton rows={10} columns={6} />}
-
-      {!loading && (
+      {loading ? (
+        <div className="flex items-center justify-center h-96 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Cargando postulaciones...</p>
+          </div>
+        </div>
+      ) : (
         <Table
           columns={columns}
           data={postulaciones}
-          loading={loading}
           onEdit={!isStudent ? (row) => openModal({
             ...row,
             postulante_id: row.postulante?.id || '',
@@ -338,80 +360,143 @@ const Postulaciones = () => {
       {/* Modal */}
       <Modal
         isOpen={isOpen}
-        title={isEditMode ? '✏️ Editar Postulación' : '➕ Nueva Postulación'}
+        title={isEditMode ? 'Editar Postulación' : 'Nueva Postulación'}
         onSubmit={handleSubmit}
         onClose={closeModal}
         submitText={isEditMode ? 'Actualizar' : 'Crear'}
         isLoading={isSubmitting}
+        sizeClass="max-w-4xl"
       >
-        <form className="space-y-4">
-          <FormField
-            label="Postulante"
-            name="postulante_id"
-            type="select"
-            value={formData.postulante_id}
-            onChange={handleInputChange}
-            options={postulantes.map((p) => ({
-              id: p.id,
-              label: `${p.nombre || ''} ${p.apellido || ''} (${p.codigo_estudiante || ''})`.trim(),
-            }))}
-            required
-          />
+        <div className="space-y-6">
+          {/* 1. Información principal */}
+          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información principal</h3>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Postulante, modalidad y gestión.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+              <FormField
+                label="Postulante"
+                name="postulante_id"
+                type="select"
+                value={formData.postulante_id}
+                onChange={handleInputChange}
+                options={postulantes.map((p) => ({ id: p.id, label: `${p.nombre || ''} ${p.apellido || ''} (${p.codigo_estudiante || ''})`.trim() }))}
+                required
+              />
 
-          <FormField
-            label="Modalidad"
-            name="modalidad"
-            type="select"
-            value={formData.modalidad}
-            onChange={handleInputChange}
-            options={modalidades.map((m) => ({
-              id: m.id,
-              label: m.nombre,
-            }))}
-            required
-          />
+              <FormField
+                label="Modalidad"
+                name="modalidad"
+                type="select"
+                value={formData.modalidad}
+                onChange={handleInputChange}
+                options={modalidades.map((m) => ({ id: m.id, label: m.nombre }))}
+                required
+              />
 
-          <FormField
-            label="Titulo del Trabajo"
-            name="titulo_trabajo"
-            type="text"
-            value={formData.titulo_trabajo}
-            onChange={handleInputChange}
-            placeholder="Titulo del trabajo"
-            required
-          />
+              <FormField
+                label="Gestión"
+                name="gestion"
+                type="number"
+                value={formData.gestion}
+                onChange={handleInputChange}
+                placeholder="2025"
+                required
+                className="sm:col-span-2"
+              />
+            </div>
+          </section>
 
-          <FormField
-            label="Gestion"
-            name="gestion"
-            type="number"
-            value={formData.gestion}
-            onChange={handleInputChange}
-            placeholder="2025"
-            required
-          />
+          {/* 2. Información académica */}
+          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información académica</h3>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Título del trabajo y tutor asociado.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+              <FormField
+                label="Título del Trabajo"
+                name="titulo_trabajo"
+                type="text"
+                value={formData.titulo_trabajo}
+                onChange={handleInputChange}
+                placeholder="Título del trabajo"
+                required
+                className="sm:col-span-2"
+              />
 
-          <FormField
-            label="Estado"
-            name="estado"
-            type="select"
-            value={formData.estado}
-            onChange={handleInputChange}
-            options={ESTADO_OPTIONS}
-            required
-          />
+              <FormField
+                label="Tutor"
+                name="tutor"
+                type="text"
+                value={formData.tutor}
+                onChange={handleInputChange}
+                placeholder="(opcional)"
+              />
+            </div>
+          </section>
 
-          <FormField
-            label="Estado General"
-            name="estado_general"
-            type="select"
-            value={formData.estado_general}
-            onChange={handleInputChange}
-            options={ESTADO_GENERAL_OPTIONS}
-            required
-          />
+          {/* 3. Estado de postulación */}
+          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Estado de postulación</h3>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Estado actual, estado general y observaciones.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+              <FormField
+                label="Estado"
+                name="estado"
+                type="select"
+                value={formData.estado}
+                onChange={handleInputChange}
+                options={ESTADO_OPTIONS}
+                required
+              />
 
-        </form>
+              <FormField
+                label="Estado General"
+                name="estado_general"
+                type="select"
+                value={formData.estado_general}
+                onChange={handleInputChange}
+                options={ESTADO_GENERAL_OPTIONS}
+                required
+              />
+
+              <FormField
+                label="Observaciones"
+                name="observaciones"
+                type="textarea"
+                value={formData.observaciones}
+                onChange={handleInputChange}
+                placeholder="(opcional) Notas internas visibles para administradores"
+                className="sm:col-span-2"
+              />
+            </div>
+          </section>
+
+          {/* 4. Configuración adicional */}
+          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Configuración adicional</h3>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Etapa actual de la postulación, según la modalidad seleccionada.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+              <FormField
+                label="Etapa actual"
+                name="etapa_actual"
+                type="select"
+                value={formData.etapa_actual}
+                onChange={handleInputChange}
+                options={etapas.map((etapa) => ({ id: etapa.id, label: etapa.nombre }))}
+                placeholder="Sin etapa actual"
+                helperText="Opcional. Si no se selecciona, la postulación queda sin etapa asignada."
+                className="sm:col-span-2"
+              />
+            </div>
+          </section>
+        </div>
       </Modal>
     </div>
   );

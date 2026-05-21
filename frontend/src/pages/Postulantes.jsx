@@ -278,15 +278,16 @@ const Postulantes = () => {
           onClose={closeModal}
           submitText={isEditMode ? 'Actualizar' : 'Crear'}
           isLoading={isSubmitting}
+          sizeClass="max-w-4xl"
         >
-          <div className="space-y-5">
+          <div className="space-y-6">
             {isAdmin && (
-              <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-                <div className="mb-4">
+              <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+                <div className="mb-3">
                   <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Asignación de usuario</h3>
                   <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Opcional. Puedes vincular el postulante a un usuario existente o dejarlo sin asignar.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                <div className="grid grid-cols-1 gap-4">
                   <FormField
                     label="Usuario"
                     name="usuario"
@@ -305,12 +306,12 @@ const Postulantes = () => {
             )}
 
             {/* Información Personal */}
-            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-              <div className="mb-4">
+            <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+              <div className="mb-3">
                 <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información personal</h3>
                 <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos básicos del postulante.</p>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
                 <FormField
                   label="Nombre"
                   name="nombre"
@@ -343,12 +344,12 @@ const Postulantes = () => {
             </section>
 
             {/* Información Académica */}
-            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-              <div className="mb-4">
+            <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+              <div className="mb-3">
                 <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información académica</h3>
                 <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos de formación y carrera.</p>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
                 <FormField
                   label="Código de Estudiante"
                   name="codigo_estudiante"
@@ -379,12 +380,12 @@ const Postulantes = () => {
             </section>
 
             {/* Información de Contacto */}
-            <section className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:p-5 dark:border-gray-700 dark:bg-gray-800/60">
-              <div className="mb-4">
+            <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+              <div className="mb-3">
                 <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información de contacto</h3>
                 <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Datos para comunicación.</p>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
+              <div className="grid grid-cols-1 gap-4">
                 <FormField
                   label="Teléfono"
                   name="telefono"
