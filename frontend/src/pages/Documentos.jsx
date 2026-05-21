@@ -205,6 +205,21 @@ const Documentos = () => {
     return colors[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400';
   };
 
+  const getPostulacionLabel = (postulacion) => {
+    const postulanteNombre = postulacion.postulante
+      ? `${postulacion.postulante.nombre || ''} ${postulacion.postulante.apellido || ''}`.trim()
+      : postulacion.postulante_nombre || '';
+    const modalidadNombre = postulacion.modalidad_nombre || postulacion.modalidad?.nombre || '';
+
+    const parts = [postulanteNombre, modalidadNombre].filter(Boolean);
+
+    if (parts.length > 0) {
+      return parts.join(' — ');
+    }
+
+    return 'Postulación sin datos';
+  };
+
   const columns = [
     {
       key: 'tipo_documento_nombre',
@@ -314,7 +329,7 @@ const Documentos = () => {
                   onChange={handleInputChange}
                   options={postulaciones.map((p) => ({
                     id: p.id,
-                    label: `#${p.id} - Postulación`,
+                    label: getPostulacionLabel(p),
                   }))}
                   required
                   className="md:col-span-1"
