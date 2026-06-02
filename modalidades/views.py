@@ -1,12 +1,17 @@
-from rest_framework import filters, viewsets
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 
 from config.permissions import CRUDModelPermission
-from .models import Etapa, Modalidad
-from .serializers import EtapaSerializer, ModalidadSerializer
+from .models import Etapa, Modalidad, ModalidadRequisito
+from .serializers import EtapaSerializer, ModalidadRequisitoSerializer, ModalidadSerializer
 
 
 class ModalidadViewSet(viewsets.ModelViewSet):
-    queryset = Modalidad.objects.all()
+    queryset = Modalidad.objects.prefetch_related('etapas', 'requisitos').all()
     serializer_class = ModalidadSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'descripcion']
@@ -17,6 +22,86 @@ class ModalidadViewSet(viewsets.ModelViewSet):
         if self.action in {'create', 'update', 'partial_update', 'destroy'}:
             return [CRUDModelPermission()]
         return super().get_permissions()
+
+    def _can_manage_requisitos(self, user):
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_perm('modalidades.add_modalidadrequisito')
+                or user.has_perm('modalidades.change_modalidadrequisito')
+                or user.has_perm('modalidades.delete_modalidadrequisito')
+            )
+        )
+
+    def _get_requisito(self, modalidad_id, requisito_id):
+        return get_object_or_404(ModalidadRequisito, pk=requisito_id, modalidad_id=modalidad_id)
+
+    @action(detail=True, methods=['get', 'post'], url_path='requisitos')
+    def requisitos(self, request, pk=None):
+        modalidad = self.get_object()
+
+        if request.method == 'GET':
+            requisitos = modalidad.requisitos.all()
+            serializer = ModalidadRequisitoSerializer(requisitos, many=True, context={'request': request})
+            return Response(serializer.data)
+
+        if not self._can_manage_requisitos(request.user):
+            raise PermissionDenied('No tienes permiso para administrar requisitos.')
+
+        serializer = ModalidadRequisitoSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(modalidad=modalidad)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get', 'put', 'patch', 'delete'], url_path=r'requisitos/(?P<requisito_id>[^/.]+)')
+    def requisito_detail(self, request, pk=None, requisito_id=None):
+        requisito = self._get_requisito(pk, requisito_id)
+
+        if request.method == 'GET':
+            serializer = ModalidadRequisitoSerializer(requisito, context={'request': request})
+            return Response(serializer.data)
+
+        if not self._can_manage_requisitos(request.user):
+            raise PermissionDenied('No tienes permiso para administrar requisitos.')
+
+        if request.method == 'DELETE':
+            requisito.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = ModalidadRequisitoSerializer(
+            requisito,
+            data=request.data,
+            partial=(request.method == 'PATCH'),
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path=r'requisitos/(?P<requisito_id>[^/.]+)/descargar')
+    def requisito_descargar(self, request, pk=None, requisito_id=None):
+        requisito = self._get_requisito(pk, requisito_id)
+
+        if not requisito.archivo:
+            return Response({'detail': 'El requisito no tiene archivo disponible.'}, status=status.HTTP_404_NOT_FOUND)
+
+        archivo = requisito.archivo.open('rb')
+        filename = requisito.archivo.name.split('/')[-1]
+
+        return FileResponse(archivo, as_attachment=True, filename=filename)
+
+    @action(detail=True, methods=['get'], url_path=r'requisitos/(?P<requisito_id>[^/.]+)/preview')
+    def requisito_preview(self, request, pk=None, requisito_id=None):
+        requisito = self._get_requisito(pk, requisito_id)
+
+        if not requisito.archivo:
+            return Response({'detail': 'El requisito no tiene archivo disponible.'}, status=status.HTTP_404_NOT_FOUND)
+
+        archivo = requisito.archivo.open('rb')
+        filename = requisito.archivo.name.split('/')[-1]
+        return FileResponse(archivo, as_attachment=False, filename=filename)
 
 
 class EtapaViewSet(viewsets.ReadOnlyModelViewSet):

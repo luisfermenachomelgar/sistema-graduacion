@@ -4,15 +4,17 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '../constants/api';
 import { useCrud } from '../hooks/useCrud';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import FormField from '../components/FormField';
 import { PageHeader, SectionCard } from '../components';
-import { Plus } from 'lucide-react';
+import { ArrowRight, Plus, PencilLine, Trash2 } from 'lucide-react';
 
 const Modalidades = () => {
+  const navigate = useNavigate();
   const {
     data: modalidades,
     loading,
@@ -155,30 +157,54 @@ const Modalidades = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {modalidades.length > 0 ? (
             modalidades.map((modalidad) => (
-              <SectionCard key={modalidad.id} className="border-l-4 border-l-blue-600">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{modalidad.nombre}</h3>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${modalidad.activa ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                    {modalidad.activa ? '✓ Activa' : '✗ Inactiva'}
-                  </span>
+              <SectionCard key={modalidad.id} className="border-l-4 border-l-blue-600 flex flex-col h-full">
+                {/* Header */}
+                <div className="mb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{modalidad.nombre}</h3>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${modalidad.activa ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                      {modalidad.activa ? '✓ Activa' : '✗ Inactiva'}
+                    </span>
+                  </div>
                 </div>
-                <p className="mb-4 min-h-12 text-sm text-gray-600 dark:text-gray-400">{modalidad.descripcion}</p>
-                <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                  Creada: {new Date(modalidad.creada_en).toLocaleDateString()}
+
+                {/* Body */}
+                <div className="mb-6">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{modalidad.descripcion}</p>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Creada: {new Date(modalidad.creada_en).toLocaleDateString()}</div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openModal(modalidad)}
-                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(modalidad.id)}
-                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-                  >
-                    Eliminar
-                  </button>
+
+                {/* Footer: acción principal + secundarias */}
+                <div className="mt-auto pt-4 border-t border-gray-200/60 dark:border-gray-700/50">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex-shrink-0">
+                      <button
+                        onClick={() => navigate(`/modalidades/${modalidad.id}`)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Abrir modalidad
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => openModal(modalidad)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/15 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:border-blue-500/25 hover:bg-blue-500/15 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 dark:border-blue-400/15 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 dark:hover:text-blue-200"
+                      >
+                        <PencilLine className="h-4 w-4" />
+                        Editar
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(modalidad.id)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-rose-500/15 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-500/25 hover:bg-rose-500/15 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-200"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </SectionCard>
             ))

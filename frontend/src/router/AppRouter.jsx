@@ -14,6 +14,7 @@ import Postulantes from '../pages/Postulantes';
 import Postulaciones from '../pages/Postulaciones';
 import Documentos from '../pages/Documentos';
 import Modalidades from '../pages/Modalidades';
+import ModalidadDetalle from '../pages/ModalidadDetalle';
 import Usuarios from '../pages/Usuarios';
 import Reportes from '../pages/Reportes';
 
@@ -75,6 +76,17 @@ const AppRouter = () => {
             <ProtectedRoute requiredRole={['admin', 'administ']}>
               <AdminLayout>
                 <Modalidades />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/modalidades/:id"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <ModalidadDetalle />
               </AdminLayout>
             </ProtectedRoute>
           }

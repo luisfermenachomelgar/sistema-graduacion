@@ -29,3 +29,23 @@ class Etapa(models.Model):
 
     def __str__(self):
         return f"{self.modalidad.nombre} - {self.orden}. {self.nombre}"
+
+
+class ModalidadRequisito(models.Model):
+    modalidad = models.ForeignKey(Modalidad, on_delete=models.CASCADE, related_name='requisitos')
+    nombre = models.CharField(max_length=150)
+    descripcion = models.TextField(blank=True)
+    archivo = models.FileField(upload_to='modalidades/requisitos/', blank=True, null=True)
+    categoria = models.CharField(max_length=100, blank=True, default='General')
+    obligatorio = models.BooleanField(default=True)
+    version = models.CharField(max_length=50, default='1.0')
+    observaciones = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['modalidad__nombre', 'nombre']
+
+    def __str__(self):
+        return f"{self.modalidad.nombre} - {self.nombre}"
