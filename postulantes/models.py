@@ -1,5 +1,7 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 
 class Postulante(models.Model):
@@ -38,6 +40,11 @@ class Postulante(models.Model):
 
 
 class Postulacion(models.Model):
+    SEMESTRE_CHOICES = (
+        (1, 'Primer semestre'),
+        (2, 'Segundo semestre'),
+    )
+
     ESTADO_CHOICES = (
         ('borrador', 'Borrador'),
         ('en_revision', 'En revision'),
@@ -66,6 +73,8 @@ class Postulacion(models.Model):
     # Campo Legacy
     tutor = models.CharField(max_length=150, blank=True)
     
+    anio_academico = models.PositiveIntegerField(null=True, blank=True)
+    semestre_academico = models.PositiveSmallIntegerField(null=True, blank=True, choices=SEMESTRE_CHOICES)
     gestion = models.PositiveIntegerField()
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='borrador')
     estado_general = models.CharField(
@@ -78,13 +87,36 @@ class Postulacion(models.Model):
 
     class Meta:
         ordering = ['-fecha_postulacion']
-        unique_together = ('postulante', 'gestion')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['postulante', 'anio_academico', 'semestre_academico'],
+                condition=Q(anio_academico__isnull=False, semestre_academico__isnull=False),
+                name='uniq_postulante_periodo_academico',
+            ),
+        ]
         permissions = (
             ('puede_avanzar_etapa', 'Puede avanzar etapa'),
         )
 
     def __str__(self):
-        return f"{self.postulante} - {self.modalidad.nombre} ({self.gestion})"
+        periodo = self.periodo_academico_display or str(self.gestion)
+        return f"{self.postulante} - {self.modalidad.nombre} ({periodo})"
+
+    @property
+    def periodo_academico_display(self):
+        if self.anio_academico is None or self.semestre_academico is None:
+            return ''
+        return f"{self.semestre_academico}/{self.anio_academico}"
+
+    def clean(self):
+        super().clean()
+        if self.semestre_academico is not None and self.semestre_academico not in {1, 2}:
+            raise ValidationError({'semestre_academico': 'El semestre académico debe ser 1 o 2.'})
+
+    def save(self, *args, **kwargs):
+        if self.anio_academico is not None:
+            self.gestion = self.anio_academico
+        super().save(*args, **kwargs)
 
 class Notificacion(models.Model):
     usuario = models.ForeignKey(

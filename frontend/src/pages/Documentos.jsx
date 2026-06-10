@@ -141,9 +141,7 @@ const Documentos = () => {
 
         const method = isEditMode ? 'put' : 'post';
         try {
-          const response = await axiosInstance[method](endpoint, payload, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          const response = await axiosInstance[method](endpoint, payload);
           result = { success: true, data: response.data };
         } catch (error) {
           result = { success: false, error: error.response?.data?.error || error.response?.data?.detail || 'Error en la operación' };

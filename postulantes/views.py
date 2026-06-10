@@ -77,7 +77,7 @@ class PostulacionViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter
     ]
-    filterset_fields = ['modalidad', 'gestion', 'estado']
+    filterset_fields = ['modalidad', 'anio_academico', 'semestre_academico', 'estado']
 
     search_fields = [
         'titulo_trabajo',
@@ -86,7 +86,7 @@ class PostulacionViewSet(viewsets.ModelViewSet):
         'postulante__nombre',
         'postulante__apellido',
     ]
-    ordering_fields = ['fecha_postulacion', 'gestion']
+    ordering_fields = ['fecha_postulacion', 'anio_academico', 'semestre_academico']
     ordering = ['-fecha_postulacion']
     permission_classes = [PostulacionRolePermission]
 

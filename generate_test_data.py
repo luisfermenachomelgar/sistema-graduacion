@@ -108,7 +108,8 @@ for i in range(100):
         postulante=postulante,
         modalidad=modalidad,
         titulo_trabajo=f'Trabajo de Grado #{i+1}',
-        gestion=2026,
+        anio_academico=2026,
+        semestre_academico=random.choice([1, 2]),
         estado='aprobada',
         estado_general=estado,
         observaciones=f'Postulación de prueba #{i+1}'

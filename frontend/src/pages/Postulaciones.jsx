@@ -21,7 +21,8 @@ const INITIAL_FORM_DATA = {
   postulante_id: '',
   modalidad: '',
   titulo_trabajo: '',
-  gestion: '',
+  anio_academico: '',
+  semestre_academico: '',
   estado: 'borrador',
   estado_general: 'EN_PROCESO',
   tutor: '',
@@ -74,8 +75,14 @@ const Postulaciones = () => {
   const [success, setSuccess] = useState('');
   
   const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
+  const [filterAnioAcademico, setFilterAnioAcademico] = useState(searchParams.get('anio_academico') || '');
+  const [filterSemestreAcademico, setFilterSemestreAcademico] = useState(searchParams.get('semestre_academico') || '');
 
-  const { search, setSearch, page, setPage } = useListFilters(list, { estado: filterEstado }, {
+  const { search, setSearch, page, setPage } = useListFilters(list, {
+    estado: filterEstado,
+    anio_academico: filterAnioAcademico,
+    semestre_academico: filterSemestreAcademico,
+  }, {
     requestConfig: { skipGlobalLoader: true },
     errorMessage: 'Error al cargar postulaciones',
     exceptionMessage: 'Error loading postulaciones',
@@ -119,7 +126,7 @@ const Postulaciones = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const numericFields = ['modalidad', 'postulante_id', 'gestion', 'etapa_actual'];
+    const numericFields = ['modalidad', 'postulante_id', 'anio_academico', 'semestre_academico', 'etapa_actual'];
     setFormData({
       ...formData,
       [name]: numericFields.includes(name) ? (value ? parseInt(value) : '') : value,
@@ -132,8 +139,8 @@ const Postulaciones = () => {
     setSuccess('');
 
     // Validar campos requeridos (dropdowns)
-    if (!formData.postulante_id || !formData.modalidad || !formData.gestion || !formData.titulo_trabajo) {
-      setError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo y Gestión)');
+    if (!formData.postulante_id || !formData.modalidad || !formData.anio_academico || !formData.semestre_academico || !formData.titulo_trabajo) {
+      setError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo, Año y Semestre Académico)');
       setIsSubmitting(false);
       return;
     }
@@ -146,7 +153,8 @@ const Postulaciones = () => {
       const payload = {
         postulante_id: formData.postulante_id,
         titulo_trabajo: formData.titulo_trabajo,
-        gestion: formData.gestion,
+        anio_academico: formData.anio_academico,
+        semestre_academico: formData.semestre_academico,
         estado: formData.estado,
         estado_general: formData.estado_general,
         modalidad: formData.modalidad,
@@ -233,9 +241,9 @@ const Postulaciones = () => {
       render: (value) => value || '-',
     },
     {
-      key: 'gestion',
-      label: 'Gestion',
-      render: (value) => value || '-',
+      key: 'periodo_academico_display',
+      label: 'Período',
+      render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
     },
     {
       key: 'estado',
@@ -309,6 +317,34 @@ const Postulaciones = () => {
             ))}
           </select>
         </div>
+        <div className="w-full sm:w-44">
+          <input
+            type="number"
+            min="2000"
+            max="2100"
+            placeholder="Año académico"
+            value={filterAnioAcademico}
+            onChange={(e) => {
+              setFilterAnioAcademico(e.target.value);
+              setPage(1);
+            }}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <select
+            value={filterSemestreAcademico}
+            onChange={(e) => {
+              setFilterSemestreAcademico(e.target.value);
+              setPage(1);
+            }}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+          >
+            <option value="">Semestre</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -372,7 +408,7 @@ const Postulaciones = () => {
           <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
             <div className="mb-3">
               <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información principal</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Postulante, modalidad y gestión.</p>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Postulante, modalidad y período académico.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               <FormField
@@ -396,14 +432,26 @@ const Postulaciones = () => {
               />
 
               <FormField
-                label="Gestión"
-                name="gestion"
+                label="Año académico"
+                name="anio_academico"
                 type="number"
-                value={formData.gestion}
+                value={formData.anio_academico}
                 onChange={handleInputChange}
-                placeholder="2025"
+                placeholder="2026"
                 required
-                className="sm:col-span-2"
+              />
+
+              <FormField
+                label="Semestre académico"
+                name="semestre_academico"
+                type="select"
+                value={formData.semestre_academico}
+                onChange={handleInputChange}
+                options={[
+                  { id: 1, label: '1' },
+                  { id: 2, label: '2' },
+                ]}
+                required
               />
             </div>
           </section>
@@ -489,7 +537,13 @@ const Postulaciones = () => {
                 type="select"
                 value={formData.etapa_actual}
                 onChange={handleInputChange}
-                options={etapas.map((etapa) => ({ id: etapa.id, label: etapa.nombre }))}
+                options={
+                  formData.modalidad
+                    ? etapas
+                        .filter((etapa) => formData.modalidad && etapa.modalidad === formData.modalidad)
+                        .map((etapa) => ({ id: etapa.id, label: etapa.nombre }))
+                    : []
+                }
                 placeholder="Sin etapa actual"
                 helperText="Opcional. Si no se selecciona, la postulación queda sin etapa asignada."
                 className="sm:col-span-2"

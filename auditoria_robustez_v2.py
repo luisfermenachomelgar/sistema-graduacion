@@ -270,7 +270,8 @@ try:
             modalidad_id=999999,  # No existe
             titulo_trabajo='Test',
             tutor='Test',
-            gestion=2026,
+            anio_academico=2026,
+            semestre_academico=1,
             estado='borrador',
             estado_general='EN_PROCESO'
         )
@@ -279,7 +280,7 @@ try:
     except ValidationError as e:
         print(f"   ✓ FK a modalidad inexistente → bloqueado")
     
-    # 2. Intentar crear postulación sin gestion requerido
+    # 2. Intentar crear postulación sin período académico requerido
     try:
         modalidad = Modalidad.objects.first()
         if modalidad:
@@ -288,16 +289,16 @@ try:
                 modalidad=modalidad,
                 titulo_trabajo='Test',
                 tutor='Test',
-                # SIN gestion
+                # SIN período académico
                 estado='borrador',
                 estado_general='EN_PROCESO'
             )
             bad_post2.full_clean()
-            print(f"   ⚠ Gestion no validado como requerido")
+            print(f"   ⚠ Período académico no validado como requerido")
         else:
             print(f"   ✓ No hay modalidad para test (OK)")
     except ValidationError as e:
-        print(f"   ✓ Campo gestion requerido → bloqueado")
+        print(f"   ✓ Campos de período académico requeridos → bloqueados")
     
     # 3. Intentar estado_general inválido
     try:
@@ -307,7 +308,8 @@ try:
             modalidad=modalidad,
             titulo_trabajo='Test',
             tutor='Test',
-            gestion=2026,
+            anio_academico=2026,
+            semestre_academico=1,
             estado='borrador',
             estado_general='ESTADO_INVALIDO'  # No en choices
         )
@@ -316,7 +318,7 @@ try:
     except ValidationError as e:
         print(f"   ✓ estado_general inválido → bloqueado")
     
-    # 4. Verificar unique_together (postulante + gestion)
+    # 4. Verificar unicidad (postulante + período académico)
     try:
         modalidad = Modalidad.objects.first()
         post_valida = Postulacion.objects.create(
@@ -324,20 +326,22 @@ try:
             modalidad=modalidad,
             titulo_trabajo='Original',
             tutor='Tutor',
-            gestion=2026,
+            anio_academico=2026,
+            semestre_academico=1,
             estado='borrador',
             estado_general='EN_PROCESO'
         )
         print(f"   ✓ Postulación válida creada")
         
-        # Intentar duplicado (mismo postulante + gestion)
+        # Intentar duplicado (mismo postulante + período académico)
         try:
             post_dup = Postulacion(
                 postulante=postulante_ref,
                 modalidad=modalidad,
                 titulo_trabajo='Duplicado',
                 tutor='Tutor',
-                gestion=2026,  # ← DUPLICADO
+                anio_academico=2026,
+                semestre_academico=1,  # ← DUPLICADO
                 estado='borrador',
                 estado_general='EN_PROCESO'
             )
@@ -345,7 +349,7 @@ try:
             post_dup.save()
             raise Exception("❌ Permitió postulación duplicada")
         except ValidationError as e:
-            print(f"   ✓ unique_together (postulante+gestion) → bloqueado")
+            print(f"   ✓ unique_together (postulante+periodo) → bloqueado")
     except Exception as e:
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
             print(f"   ✓ Constraint funcionando")

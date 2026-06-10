@@ -15,10 +15,16 @@ class PostulacionAdmin(admin.ModelAdmin):
         'postulante',
         'modalidad',
         'etapa_actual',
-        'gestion',
+        'anio_academico',
+        'semestre_academico',
+        'periodo_academico_display',
         'estado',
         'estado_general',
         'fecha_postulacion',
     )
-    list_filter = ('estado', 'estado_general', 'modalidad', 'etapa_actual', 'gestion')
+    list_filter = ('estado', 'estado_general', 'modalidad', 'etapa_actual', 'anio_academico', 'semestre_academico')
     search_fields = ('postulante__usuario__username', 'titulo_trabajo', 'tutor')
+
+    @admin.display(description='Período académico')
+    def periodo_academico_display(self, obj):
+        return obj.periodo_academico_display or '-'

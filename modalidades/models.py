@@ -35,6 +35,7 @@ class ModalidadRequisito(models.Model):
     modalidad = models.ForeignKey(Modalidad, on_delete=models.CASCADE, related_name='requisitos')
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField(blank=True)
+    orden = models.PositiveIntegerField(default=1)
     archivo = models.FileField(upload_to='modalidades/requisitos/', blank=True, null=True)
     categoria = models.CharField(max_length=100, blank=True, default='General')
     obligatorio = models.BooleanField(default=True)
@@ -45,7 +46,7 @@ class ModalidadRequisito(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['modalidad__nombre', 'nombre']
+        ordering = ['modalidad__nombre', 'orden', 'nombre']
 
     def __str__(self):
         return f"{self.modalidad.nombre} - {self.nombre}"

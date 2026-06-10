@@ -44,6 +44,12 @@ class ApiService {
    */
   async create(endpoint, data, requestConfig = {}) {
     try {
+      if (data instanceof FormData) {
+        requestConfig.headers = {
+          ...(requestConfig.headers || {}),
+          'Content-Type': undefined,
+        };
+      }
       const response = await axiosInstance.post(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {
@@ -59,6 +65,12 @@ class ApiService {
    */
   async update(endpoint, data, requestConfig = {}) {
     try {
+      if (data instanceof FormData) {
+        requestConfig.headers = {
+          ...(requestConfig.headers || {}),
+          'Content-Type': undefined,
+        };
+      }
       const response = await axiosInstance.put(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {
@@ -74,6 +86,12 @@ class ApiService {
    */
   async patch(endpoint, data, requestConfig = {}) {
     try {
+      if (data instanceof FormData) {
+        requestConfig.headers = {
+          ...(requestConfig.headers || {}),
+          'Content-Type': undefined,
+        };
+      }
       const response = await axiosInstance.patch(endpoint, data, requestConfig);
       return { success: true, data: response.data };
     } catch (error) {

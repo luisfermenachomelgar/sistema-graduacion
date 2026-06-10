@@ -118,9 +118,10 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
                 return
 
             asunto = f"Corrección requerida: {documento.tipo_documento.nombre}"
+            periodo_academico = documento.postulacion.periodo_academico_display or 'período académico no registrado'
             mensaje = (
                 f"Estimado(a) {postulante.nombre} {postulante.apellido},\n\n"
-                f"Se ha revisado su documento '{documento.tipo_documento.nombre}' correspondiente a la gestión {documento.postulacion.gestion} y ha sido RECHAZADO.\n\n"
+                f"Se ha revisado su documento '{documento.tipo_documento.nombre}' correspondiente al período académico {periodo_academico} y ha sido RECHAZADO.\n\n"
                 f"Observaciones del revisor:\n"
                 f"{documento.comentario_revision or 'Sin comentarios adicionales.'}\n\n"
                 f"Por favor, ingrese al sistema para subir una nueva versión corregida.\n"

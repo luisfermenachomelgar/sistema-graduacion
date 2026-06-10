@@ -63,12 +63,13 @@ class PostulacionListSerializer(serializers.ModelSerializer):
     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
     etapa_nombre = serializers.CharField(source='etapa_actual.nombre', read_only=True)
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    periodo_academico_display = serializers.CharField(read_only=True)
     
     class Meta:
         model = Postulacion
         fields = [
             'id', 'postulante_nombre', 'modalidad_nombre', 'titulo_trabajo',
-            'etapa_nombre', 'gestion', 'estado', 'estado_display',
+            'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
             'estado_general', 'fecha_postulacion'
         ]
         read_only_fields = ['id', 'fecha_postulacion']
@@ -93,12 +94,13 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
     estado_general_display = serializers.CharField(
         source='get_estado_general_display', read_only=True
     )
+    periodo_academico_display = serializers.CharField(read_only=True)
     
     class Meta:
         model = Postulacion
         fields = [
             'id', 'postulante', 'postulante_id', 'modalidad', 'modalidad_nombre',
-            'etapa_actual', 'etapa_nombre', 'titulo_trabajo', 'tutor', 'gestion',
+            'etapa_actual', 'etapa_nombre', 'titulo_trabajo', 'tutor', 'anio_academico', 'semestre_academico', 'periodo_academico_display',
             'estado', 'estado_display', 'estado_general', 'estado_general_display',
             'observaciones', 'fecha_postulacion'
         ]
@@ -108,6 +110,17 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
         """Valida que la etapa pertenezca a la modalidad."""
         modalidad = attrs.get('modalidad') or getattr(self.instance, 'modalidad', None)
         etapa_actual = attrs.get('etapa_actual') or getattr(self.instance, 'etapa_actual', None)
+        anio_academico = attrs.get('anio_academico', getattr(self.instance, 'anio_academico', None))
+        semestre_academico = attrs.get('semestre_academico', getattr(self.instance, 'semestre_academico', None))
+
+        if anio_academico is None:
+            raise serializers.ValidationError({'anio_academico': 'El año académico es requerido.'})
+
+        if semestre_academico is None:
+            raise serializers.ValidationError({'semestre_academico': 'El semestre académico es requerido.'})
+
+        if semestre_academico not in (1, 2):
+            raise serializers.ValidationError({'semestre_academico': 'El semestre académico debe ser 1 o 2.'})
 
         if modalidad and etapa_actual and etapa_actual.modalidad_id != modalidad.id:
             raise serializers.ValidationError(

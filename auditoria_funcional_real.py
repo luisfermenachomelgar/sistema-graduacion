@@ -195,7 +195,8 @@ def test_2_crear_documento(token, postulante_info):
             'modalidad': modalidad.id,
             'titulo_trabajo': 'Trabajo de Auditoría del Sistema',
             'tutor': 'Dr. Test',
-            'gestion': datetime.now().year,
+            'anio_academico': datetime.now().year,
+            'semestre_academico': 1,
             'estado': 'borrador',
             'estado_general': 'EN_PROCESO',
             'observaciones': 'Creado por auditoría funcional'

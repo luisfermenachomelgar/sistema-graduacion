@@ -299,7 +299,7 @@ const ModalidadDetalle = () => {
         payload.append('archivo', archivoFile);
       }
 
-      const requestConfig = { headers: { 'Content-Type': 'multipart/form-data' } };
+      const requestConfig = {};
       const endpoint = editingRequirement
         ? API_CONFIG.ENDPOINTS.MODALIDAD_REQUISITO_DETAIL(id, editingRequirement.id)
         : API_CONFIG.ENDPOINTS.MODALIDAD_REQUISITOS(id);

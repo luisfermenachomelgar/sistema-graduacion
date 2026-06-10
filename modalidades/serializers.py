@@ -59,6 +59,7 @@ class ModalidadRequisitoSerializer(serializers.ModelSerializer):
             'modalidad',
             'modalidad_nombre',
             'nombre',
+            'orden',
             'descripcion',
             'archivo',
             'archivo_url',
@@ -73,7 +74,7 @@ class ModalidadRequisitoSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'modalidad_nombre', 'archivo_url', 'archivo_nombre', 'archivo_tipo', 'archivo_tamano', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'modalidad', 'modalidad_nombre', 'orden', 'archivo_url', 'archivo_nombre', 'archivo_tipo', 'archivo_tamano', 'created_at', 'updated_at']
 
     def validate_archivo(self, value):
         if not value:

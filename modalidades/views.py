@@ -1,5 +1,6 @@
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.db.models import Max
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -52,7 +53,10 @@ class ModalidadViewSet(viewsets.ModelViewSet):
 
         serializer = ModalidadRequisitoSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        serializer.save(modalidad=modalidad)
+        
+        # Calcular el siguiente orden disponible
+        max_orden = modalidad.requisitos.aggregate(Max('orden'))['orden__max'] or 0
+        serializer.save(modalidad=modalidad, orden=max_orden + 1)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get', 'put', 'patch', 'delete'], url_path=r'requisitos/(?P<requisito_id>[^/.]+)')
