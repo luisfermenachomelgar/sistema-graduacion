@@ -129,7 +129,7 @@ const Documentos = () => {
       let result;
 
       if (archivoFile) {
-        // Con archivo, usar FormData
+        // Con archivo, usar FormData a través de api.js para que gestione headers correctamente
         const payload = new FormData();
         payload.append('postulacion', formData.postulacion);
         payload.append('tipo_documento', formData.tipo_documento);
@@ -139,13 +139,9 @@ const Documentos = () => {
           payload.append('comentario_revision', formData.comentario_revision);
         }
 
-        const method = isEditMode ? 'put' : 'post';
-        try {
-          const response = await axiosInstance[method](endpoint, payload);
-          result = { success: true, data: response.data };
-        } catch (error) {
-          result = { success: false, error: error.response?.data?.error || error.response?.data?.detail || 'Error en la operación' };
-        }
+        result = isEditMode
+          ? await api.update(endpoint, payload)
+          : await api.create(endpoint, payload);
       } else {
         // Sin archivo, usar JSON
         const payload = {
