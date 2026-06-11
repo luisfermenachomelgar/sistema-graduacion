@@ -1,0 +1,351 @@
+﻿  import React, { useState } from 'react';
+  import { LayoutDashboard, Users, FileCheck, BarChart3, ChevronRight, ChevronLeft, Clipboard, BookOpen, Shield } from 'lucide-react';
+  import { Link, useLocation } from 'react-router-dom';
+  import useAuth from '../hooks/useAuth';
+  import { useSidebarCollapse } from '../context/SidebarCollapseContext';
+  
+  const Sidebar = () => {
+-   const location = useLocation();
++   // Paleta local al componente (no toca configuraciones globales)
+-   const { user } = useAuth();
++   const BRAND_DEEP = '#071740';
+-   const { collapsed, setCollapsed } = useSidebarCollapse();
++   const BRAND_MID = '#1E66B8';
++   const BRAND_AZURE = '#6FD3FF';
+-   const navigationItems = [
++   const TEXT_ON_DARK = '#EAF4FF';
+-     {
++   const MUTED = '#7A8BAF';
+-       icon: LayoutDashboard,
++   const DIVIDER = '#6FD3FF14';
+-       label: 'Inicio',
++   const HOVER_TINT = '#1E66B81A';
+-       href: '/dashboard',
++   const ACTIVE_FILL = '#6FD3FF24';
+-       badge: null,
++   const location = useLocation();
+-       roles: ['admin', 'administ'],
++   const { user } = useAuth();
+-     },
++   const { collapsed, setCollapsed } = useSidebarCollapse();
+-     {
+-       icon: Users,
++   const navigationItems = [
+-       label: 'Postulantes',
++     {
+-       href: '/postulantes',
++       icon: LayoutDashboard,
+-       badge: null,
++       label: 'Inicio',
+-       roles: ['admin', 'administ', 'estudiante'],
++       href: '/dashboard',
+-     },
++       badge: null,
+-     {
++       roles: ['admin', 'administ'],
+-       icon: Clipboard,
++     },
+-       label: 'Postulaciones',
++     {
+-       href: '/postulaciones',
++       icon: Users,
+-       badge: null,
++       label: 'Postulantes',
+-       roles: ['admin', 'administ', 'estudiante'],
++       href: '/postulantes',
+-     },
++       badge: null,
+-     {
++       roles: ['admin', 'administ', 'estudiante'],
+-       icon: FileCheck,
++     },
+-       label: 'Documentos',
++     {
+-       href: '/documentos',
++       icon: Clipboard,
+-       roles: ['admin', 'administ', 'estudiante'],
++       label: 'Postulaciones',
+-     },
++       href: '/postulaciones',
+-     {
++       badge: null,
+-       icon: BookOpen,
++       roles: ['admin', 'administ', 'estudiante'],
+-       label: 'Modalidades',
++     },
+-       href: '/modalidades',
++     {
+-       badge: null,
++       icon: FileCheck,
+-       roles: ['admin', 'administ'],
++       label: 'Documentos',
+-     },
++       href: '/documentos',
+-     {
++       roles: ['admin', 'administ', 'estudiante'],
+-       icon: Shield,
++     },
+-       label: 'Usuarios',
++     {
+-       href: '/usuarios',
++       icon: BookOpen,
+-       badge: null,
++       label: 'Modalidades',
+-       roles: ['admin'],
++       href: '/modalidades',
+-     },
++       badge: null,
+-     {
++       roles: ['admin', 'administ'],
+-       icon: BarChart3,
++     },
+-       label: 'Reportes',
++     {
+-       href: '/reportes',
++       icon: Shield,
+-       badge: null,
++       label: 'Usuarios',
+-       roles: ['admin', 'administ'],
++       href: '/usuarios',
+-     },
++       badge: null,
+-   ];
++       roles: ['admin'],
++     },
+-   const resolveRole = () => {
++     {
+-     if (user?.role) return user.role;
++       icon: BarChart3,
+-     if (user?.is_superuser === true) return 'admin';
++       label: 'Reportes',
+-     return null;
++       href: '/reportes',
+-   };
++       badge: null,
++       roles: ['admin', 'administ'],
+-   const basicMenuHrefs = new Set([
++     },
+-     '/dashboard',
++   ];
+-     '/postulantes',
+-     '/postulaciones',
++   const resolveRole = () => {
+-     '/documentos',
++     if (user?.role) return user.role;
+-   ]);
++     if (user?.is_superuser === true) return 'admin';
++     return null;
+-   const effectiveRole = resolveRole();
++   };
+  
+-   const visibleItems = effectiveRole
++   const basicMenuHrefs = new Set([
+-     ? navigationItems.filter((item) => item.roles.includes(effectiveRole))
++     '/dashboard',
+-     : navigationItems.filter((item) => basicMenuHrefs.has(item.href));
++     '/postulantes',
++     '/postulaciones',
+-   const isActive = (href) => location.pathname === href || location.pathname.startsWith(href + '/');
++     '/documentos',
++   ]);
+-   return (
+-     <aside 
++   const effectiveRole = resolveRole();
+-       className={`fixed left-0 top-0 h-screen ${collapsed ? 'w-20' : 'w-64'} relative text-white transition-all duration-300 ease-in-out z-50 flex flex-col shadow-xl border-r border-white/10 overflow-hidden`}
+-     >
++   const visibleItems = effectiveRole
+-       {/* Background Image Layer */}
++     ? navigationItems.filter((item) => item.roles.includes(effectiveRole))
+-       <div 
++     : navigationItems.filter((item) => basicMenuHrefs.has(item.href));
+-         className="absolute inset-0 bg-cover bg-center opacity-100 z-0"
+-         style={{ backgroundImage: "url('/images/universidad.jpg')" }}
++   const isActive = (href) => location.pathname === href || location.pathname.startsWith(href + '/');
+-       />
+-       
++   return (
+-       {/* Glass Layer (Blur Real) */}
++     <aside 
+-       <div className="absolute inset-0 backdrop-blur-none bg-white/0 z-0" />
++       className={`sidebar-modern fixed left-0 top-0 h-screen ${collapsed ? 'w-20' : 'w-64'} relative transition-all duration-300 ease-in-out z-50 flex flex-col shadow-xl overflow-hidden`}
+-       
++     >
+-       {/* Dark Overlay Suave */}
++       {/* Local styles using la paleta definida arriba (scoped al componente) */}
+-       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0" />
++       <style>{` 
+-       
++         .sidebar-modern{background:linear-gradient(180deg, ${BRAND_DEEP}, ${BRAND_MID});color:${TEXT_ON_DARK};border-right:1px solid ${DIVIDER};}
+-       {/* Content Layer */}
++         .sidebar-modern .sidebar-overlay{background:${BRAND_DEEP}8c}
+-       <div className="relative z-10 flex flex-col h-full text-white drop-shadow-xl">
++         .sidebar-modern .glass-layer{backdrop-filter: blur(6px);}
+-         {/* Logo */}
++         .sidebar-modern .logo-header{border-bottom:1px solid ${DIVIDER}}
+-         {!collapsed && (
++         .sidebar-modern .logo-box{background: ${BRAND_DEEP}20; border:1px solid ${BRAND_AZURE}22}
+-         <div className="p-4 border-b border-white/20 flex flex-col items-center transition-all duration-300 ease-in-out opacity-100">
++         .sidebar-modern .logo-title{color:${TEXT_ON_DARK}}
+-           <div className="w-24 h-24 rounded-xl overflow-hidden bg-white/10 backdrop-blur flex items-center justify-center mb-4 transition-all duration-300 ease-in-out">
++         .sidebar-modern .logo-sub{color:#B3CBE6}
+-             <img
++         .sidebar-modern .nav-wrapper{padding-left:0}
+-               src="/images/uabjb.png"
++         .sidebar-modern .nav{padding-left:1rem;padding-top:.75rem;padding-bottom:1rem}
+-               alt="Logo Universidad"
++         .sidebar-modern .nav-link{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;border-radius:.75rem;transition:all .18s ease;color:${MUTED}}
+-               className="w-20 h-20 object-contain transition-all duration-300 ease-in-out"
++         .sidebar-modern .nav-link .left{display:flex;align-items:center;gap:.5rem}
+-             />
++         .sidebar-modern .nav-link .icon{color:${MUTED};transition:all .18s ease}
+-           </div>
++         .sidebar-modern .nav-link:hover{background:${HOVER_TINT};transform:translateX(4px)}
+-           <div className="text-center transition-all duration-300 ease-in-out">
++         .sidebar-modern .nav-link:hover .icon{color:${BRAND_MID};transform:scale(1.06)}
+-             <h1 className="text-lg font-semibold text-white tracking-wide transition-all duration-300 ease-in-out">Graduaci+¦n</h1>
++         .sidebar-modern .nav-link-active{background:${ACTIVE_FILL};border-left:4px solid ${BRAND_AZURE};box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+-             <p className="text-xs text-gray-300 transition-all duration-300 ease-in-out">Sistema de Gesti+¦n</p>
++         .sidebar-modern .nav-link-active .icon{color:${BRAND_AZURE}}
+-           </div>
++         .sidebar-modern .nav-link-active .nav-label{color:${BRAND_DEEP}}
+-         </div>
++         .sidebar-modern .item-badge{background:transparent;color:#B23A3A}
+-         )}
++         .sidebar-modern .item-badge--active{background:${BRAND_AZURE}33;color:${BRAND_DEEP}}
++         .sidebar-modern .sidebar-divider{border-top:1px solid ${DIVIDER}}
+-         {/* Navegaci+¦n + Separador + Configuraci+¦n */}
++         .sidebar-modern .collapse-btn{background:${BRAND_MID}1a;color:${TEXT_ON_DARK};border-radius:9999px;padding:.375rem}
+-         <div className="flex flex-col flex-1 justify-center transition-all duration-300 ease-in-out">
++         .sidebar-modern .collapse-btn:hover{background:${BRAND_MID}2a;transform:scale(1.06)}
+-           {/* Navegaci+¦n */}
++         .sidebar-modern .chev{color:${BRAND_AZURE}}
+-           <nav className="px-3 pt-1 pb-2 space-y-3 transition-all duration-300 ease-in-out">
++       `}</style>
+-             {visibleItems.map((item) => {
++       {/* Background Image Layer */}
+-               const Icon = item.icon;
++       <div 
+-               const active = isActive(item.href);
++         className="absolute inset-0 bg-cover bg-center opacity-30 z-0"
++         style={{ backgroundImage: "url('/images/universidad.jpg')" }}
+-               return (
++       />
+-                 <Link
++       
+-                   key={item.href}
++       {/* Glass Layer (Blur Real) */}
+-                   to={item.href}
++       <div className="absolute inset-0 glass-layer bg-transparent z-0" />
+-                   className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 ease-out group ${
++       
+-                     active
++       {/* Dark Overlay Suave */}
+-                       ? 'bg-blue-500/20 bg-white/10 text-white shadow-lg shadow-inner'
++       <div className="absolute inset-0 sidebar-overlay backdrop-blur-sm z-0" />
+-                       : 'text-white hover:bg-white/5 hover:translate-x-1'
++       
+-                   }`}
++       {/* Content Layer */}
+-                 >
++       <div className="relative z-10 flex flex-col h-full drop-shadow-sm">
+-                   <div className="flex items-center gap-2 transition-all duration-300 ease-in-out">
++         {/* Logo */}
+-                     <Icon className="w-5 h-5 transition-all duration-300 ease-in-out group-hover:scale-110" />
++         {!collapsed && (
+-                     {!collapsed && <span className="font-medium tracking-wide transition-all duration-300 ease-in-out">{item.label}</span>}
++         <div className="p-4 logo-header flex flex-col items-center transition-all duration-300 ease-in-out opacity-100">
+-                   </div>
++           <div className="w-24 h-24 rounded-xl overflow-hidden logo-box flex items-center justify-center mb-4 transition-all duration-300 ease-in-out">
+-                   {item.badge && (
++             <img
+-                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
++               src="/images/uabjb.png"
+-                       active
++               alt="Logo Universidad"
+-                         ? 'bg-white/20 text-white'
++               className="w-20 h-20 object-contain transition-all duration-300 ease-in-out"
+-                         : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
++             />
+-                     }`}>
++           </div>
+-                       {item.badge}
++           <div className="text-center transition-all duration-300 ease-in-out">
+-                     </span>
++             <h1 className="text-lg font-semibold logo-title tracking-wide transition-all duration-300 ease-in-out">GraduaciÃ³n</h1>
+-                   )}
++             <p className="text-xs logo-sub transition-all duration-300 ease-in-out">Sistema de GestiÃ³n</p>
+-                   {active && <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all duration-200" />}
++           </div>
+-                 </Link>
++         </div>
+-               );
++         )}
+-             })}
+-           </nav>
++         {/* NavegaciÃ³n + Separador + ConfiguraciÃ³n */}
+-           {/* Separador */}
++         <div className="flex flex-col flex-1 justify-center transition-all duration-300 ease-in-out nav-wrapper">
+-           <div className="mx-4 my-1 border-t border-white/20 transition-all duration-300 ease-in-out"></div>
++           {/* NavegaciÃ³n */}
+-         </div>
++           <nav className="nav px-3 pt-1 pb-2 space-y-3 transition-all duration-300 ease-in-out">
++             {visibleItems.map((item) => {
+-         {/* Bot+¦n Colapsar */}
++               const Icon = item.icon;
+-         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 transition-all duration-300 ease-in-out">
++               const active = isActive(item.href);
+-           <button 
+-             onClick={() => setCollapsed(!collapsed)}
++               return (
+-             className="rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 ease-in-out hover:scale-110 p-1.5 text-white"
++                 <Link
+-           >
++                   key={item.href}
+-             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
++                   to={item.href}
+-           </button>
++                   className={`nav-link ${
+-         </div>
++                     active
+-       </div>
++                       ? 'nav-link-active'
+-     </aside>
++                       : ''
+-   );
++                   } group`}
+- };
++                 >
++                   <div className="left">
+- export default Sidebar;
++                     <Icon className="icon w-5 h-5 transition-all duration-300 ease-in-out group-hover:scale-110" />
++                     {!collapsed && <span className={`nav-label font-medium tracking-wide transition-all duration-300 ease-in-out`}>{item.label}</span>}
++                   </div>
++                   {item.badge && (
++                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${active ? 'item-badge--active' : 'item-badge'}`}>
++                       {item.badge}
++                     </span>
++                   )}
++                   {active && <ChevronRight className="w-5 h-5 chev opacity-0 group-hover:opacity-100 transition-all duration-200" />}
++                 </Link>
++               );
++             })}
++           </nav>
++           {/* Separador */}
++           <div className="mx-4 my-2 sidebar-divider transition-all duration-300 ease-in-out"></div>
++         </div>
+  
++         {/* BotÃ³n Colapsar */}
++         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 transition-all duration-300 ease-in-out">
++           <button 
++             onClick={() => setCollapsed(!collapsed)}
++             className="rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 ease-in-out hover:scale-110 p-1.5 text-white"
++           >
++             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
++           </button>
++         </div>
++       </div>
++     </aside>
++   );
++ };
+  
++ export default Sidebar;

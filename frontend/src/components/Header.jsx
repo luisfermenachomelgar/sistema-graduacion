@@ -4,6 +4,15 @@ import { Search, Bell, User, LogOut, Settings, Moon, Sun, HelpCircle } from 'luc
 import { useTheme } from '../context/ThemeContext';
 
 const Header = ({ user, onLogout }) => {
+  // Paleta corporativa local (misma que Sidebar)
+  const BRAND_DEEP = '#071740';
+  const BRAND_MID = '#1E66B8';
+  const BRAND_AZURE = '#6FD3FF';
+  const TEXT_LIGHT = '#EAF4FF';
+  const MUTED = '#7A8BAF';
+  const DIVIDER = '#6FD3FF14';
+  const HOVER_LIGHT = '#6FD3FF26';
+
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -42,17 +51,34 @@ const Header = ({ user, onLogout }) => {
   }, [])
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 backdrop-blur backdrop-filter bg-opacity-80 dark:bg-opacity-80">
+    <header className="sticky top-0 z-40 border-b transition-all duration-300" style={{ 
+      background: `linear-gradient(135deg, rgba(7, 23, 64, 0.08), rgba(30, 102, 184, 0.06))`,
+      backdropFilter: 'blur(12px)',
+      borderColor: DIVIDER
+    }}>
+      <style>{`
+        .header-dropdown {
+          /* Mantener gradiente corporativo + aumentar opacidad para ocultar fondo */
+          background: linear-gradient(135deg, rgba(30, 102, 184, 0.96), rgba(7, 23, 64, 0.92));
+          /* Fallback sólido para garantizar opacidad sobre contenido detrás */
+          background-color: rgba(7, 23, 64, 0.9);
+          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px);
+        }
+      `}</style>
       <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Buscador */}
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: MUTED }} />
               <input
                 type="text"
                 placeholder="Buscar postulantes, documentos..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#6FD3FF]/14 bg-white/10 text-[#1E66B8] placeholder-[#7A8BAF] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#6FD3FF] focus:border-[#6FD3FF]"
+                style={{
+                  caretColor: BRAND_MID
+                }}
               />
             </div>
           </div>
@@ -62,22 +88,22 @@ const Header = ({ user, onLogout }) => {
             {/* Botón Ayuda */}
             <button
               onClick={() => console.log('Abrir ayuda')}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg transition-all duration-180 text-[#7A8BAF] hover:text-[#6FD3FF] hover:bg-[#6FD3FF]/15"
               title="Ayuda"
             >
-              <HelpCircle className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <HelpCircle className="w-5 h-5" />
             </button>
 
             {/* Toggle Tema */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg transition-all duration-180 text-[#7A8BAF] hover:text-[#6FD3FF] hover:bg-[#6FD3FF]/15"
               title={isDark ? 'Modo claro' : 'Modo oscuro'}
             >
               {isDark ? (
-                <Sun className="w-5 h-5 text-gray-400" />
+                <Sun className="w-5 h-5" />
               ) : (
-                <Moon className="w-5 h-5 text-gray-500" />
+                <Moon className="w-5 h-5" />
               )}
             </button>
 
@@ -86,30 +112,32 @@ const Header = ({ user, onLogout }) => {
               <button
                 ref={notificationsButtonRef}
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="relative p-2 rounded-lg transition-all duration-180 text-[#7A8BAF] hover:text-[#6FD3FF] hover:bg-[#6FD3FF]/15"
               >
-                <Bell className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: BRAND_AZURE }}></span>
               </button>
 
               {showNotifications && (
                 <div 
                   ref={notificationsRef}
-                  className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  className="header-dropdown absolute right-0 mt-2 w-80 rounded-xl shadow-lg border overflow-hidden"
+                  style={{ borderColor: DIVIDER, backgroundColor: 'rgba(7, 23, 64, 0.9)' }}
                 >
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">Notificaciones</h3>
+                  <div className="p-4 border-b" style={{ borderColor: DIVIDER, color: 'white' }}>
+                    <h3 className="font-semibold">Notificaciones</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                        className="p-4 border-b transition-colors cursor-pointer hover:bg-white/10"
+                        style={{ borderColor: DIVIDER }}
                       >
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <p className="text-sm font-medium" style={{ color: 'white' }}>
                           Documento pendiente de revisión
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs mt-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                           Hace 2 horas
                         </p>
                       </div>
@@ -124,12 +152,12 @@ const Header = ({ user, onLogout }) => {
               <button
                 ref={userMenuButtonRef}
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-3 p-2 rounded-lg transition-all duration-180 text-[#7A8BAF] hover:text-[#6FD3FF] hover:bg-[#6FD3FF]/15"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br rounded-lg flex items-center justify-center" style={{ backgroundImage: `linear-gradient(135deg, ${BRAND_MID}, ${BRAND_AZURE})` }}>
                   <User className="w-5 h-5 text-white" />
                 </div>
-                <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="hidden md:inline text-sm font-medium text-[#1E66B8]">
                   {user?.username || 'Usuario'}
                 </span>
               </button>
@@ -137,18 +165,19 @@ const Header = ({ user, onLogout }) => {
               {showUserMenu && (
                 <div 
                   ref={userMenuRef}
-                  className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  className="header-dropdown absolute right-0 mt-2 w-48 rounded-xl shadow-lg border overflow-hidden"
+                  style={{ borderColor: DIVIDER, backgroundColor: 'rgba(7, 23, 64, 0.9)' }}
                 >
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div className="p-4 border-b" style={{ borderColor: DIVIDER, color: 'white' }}>
+                    <p className="text-sm font-medium">
                       {user?.email || 'usuario@ejemplo.com'}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                       {user?.role || 'Administrador'}
                     </p>
                   </div>
                   <div className="p-2">
-                    <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <button className="w-full flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all duration-180 hover:bg-white/10" style={{ color: 'white' }}>
                       <Settings className="w-4 h-4" />
                       Configuración
                     </button>
@@ -158,7 +187,7 @@ const Header = ({ user, onLogout }) => {
                         onLogout();
                         navigate('/login');
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all duration-180 text-[#6FD3FF] hover:bg-[#6FD3FF]/15"
                     >
                       <LogOut className="w-4 h-4" />
                       Cerrar sesión

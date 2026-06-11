@@ -5,6 +5,15 @@ import useAuth from '../hooks/useAuth';
 import { useSidebarCollapse } from '../context/SidebarCollapseContext';
 
 const Sidebar = () => {
+  // Paleta local al componente (no toca configuraciones globales)
+  const BRAND_DEEP = '#071740';
+  const BRAND_MID = '#1E66B8';
+  const BRAND_AZURE = '#6FD3FF';
+  const TEXT_ON_DARK = '#EAF4FF';
+  const MUTED = '#7A8BAF';
+  const DIVIDER = '#6FD3FF14';
+  const HOVER_TINT = '#1E66B81A';
+  const ACTIVE_FILL = '#6FD3FF24';
   const location = useLocation();
   const { user } = useAuth();
   const { collapsed, setCollapsed } = useSidebarCollapse();
@@ -83,26 +92,46 @@ const Sidebar = () => {
 
   return (
     <aside 
-      className={`fixed left-0 top-0 h-screen ${collapsed ? 'w-20' : 'w-64'} relative text-white transition-all duration-300 ease-in-out z-50 flex flex-col shadow-xl border-r border-white/10 overflow-hidden`}
+      className={`sidebar-modern fixed left-0 top-0 h-screen ${collapsed ? 'w-20' : 'w-64'} relative transition-all duration-300 ease-in-out z-50 flex flex-col shadow-xl overflow-hidden`}
     >
-      {/* Background Image Layer */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-100 z-0"
-        style={{ backgroundImage: "url('/images/universidad.jpg')" }}
-      />
-      
+      {/* Local styles using la paleta definida arriba (scoped al componente) */}
+      <style>{` 
+        .sidebar-modern{background:linear-gradient(180deg, ${BRAND_DEEP}, ${BRAND_MID});color:${TEXT_ON_DARK};border-right:1px solid ${DIVIDER};}
+        .sidebar-modern .sidebar-overlay{background:${BRAND_DEEP}8c}
+        .sidebar-modern .glass-layer{backdrop-filter: blur(6px);}
+        .sidebar-modern .logo-header{border-bottom:1px solid ${DIVIDER}}
+        .sidebar-modern .logo-box{background: ${BRAND_DEEP}20; border:1px solid ${BRAND_AZURE}22}
+        .sidebar-modern .logo-title{color:${TEXT_ON_DARK}}
+        .sidebar-modern .logo-sub{color:#B3CBE6}
+        .sidebar-modern .nav-wrapper{padding-left:0}
+        .sidebar-modern .nav{padding-left:1rem;padding-top:.75rem;padding-bottom:1rem}
+        .sidebar-modern .nav-link{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;border-radius:.75rem;transition:all .18s ease;color:${MUTED}}
+        .sidebar-modern .nav-link .left{display:flex;align-items:center;gap:.5rem}
+        .sidebar-modern .nav-link .icon{color:${MUTED};transition:all .18s ease}
+        .sidebar-modern .nav-link:hover{background:${HOVER_TINT};transform:translateX(4px)}
+        .sidebar-modern .nav-link:hover .icon{color:${BRAND_MID};transform:scale(1.06)}
+        .sidebar-modern .nav-link-active{background:${ACTIVE_FILL};border-left:4px solid ${BRAND_AZURE};box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+        .sidebar-modern .nav-link-active .icon{color:${BRAND_AZURE}}
+        .sidebar-modern .nav-link-active .nav-label{color:${BRAND_DEEP}}
+        .sidebar-modern .item-badge{background:transparent;color:#B23A3A}
+        .sidebar-modern .item-badge--active{background:${BRAND_AZURE}33;color:${BRAND_DEEP}}
+        .sidebar-modern .sidebar-divider{border-top:1px solid ${DIVIDER}}
+        .sidebar-modern .collapse-btn{background:${BRAND_MID}1a;color:${TEXT_ON_DARK};border-radius:9999px;padding:.375rem}
+        .sidebar-modern .collapse-btn:hover{background:${BRAND_MID}2a;transform:scale(1.06)}
+        .sidebar-modern .chev{color:${BRAND_AZURE}}
+      `}</style>
       {/* Glass Layer (Blur Real) */}
-      <div className="absolute inset-0 backdrop-blur-none bg-white/0 z-0" />
+      <div className="absolute inset-0 glass-layer bg-transparent z-0" />
       
       {/* Dark Overlay Suave */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0" />
+      <div className="absolute inset-0 sidebar-overlay backdrop-blur-sm z-0" />
       
       {/* Content Layer */}
-      <div className="relative z-10 flex flex-col h-full text-white drop-shadow-xl">
+      <div className="relative z-10 flex flex-col h-full drop-shadow-sm">
         {/* Logo */}
         {!collapsed && (
-        <div className="p-4 border-b border-white/20 flex flex-col items-center transition-all duration-300 ease-in-out opacity-100">
-          <div className="w-24 h-24 rounded-xl overflow-hidden bg-white/10 backdrop-blur flex items-center justify-center mb-4 transition-all duration-300 ease-in-out">
+        <div className="p-4 logo-header flex flex-col items-center transition-all duration-300 ease-in-out opacity-100">
+          <div className="w-24 h-24 rounded-xl overflow-hidden logo-box flex items-center justify-center mb-4 transition-all duration-300 ease-in-out">
             <img
               src="/images/uabjb.png"
               alt="Logo Universidad"
@@ -110,16 +139,16 @@ const Sidebar = () => {
             />
           </div>
           <div className="text-center transition-all duration-300 ease-in-out">
-            <h1 className="text-lg font-semibold text-white tracking-wide transition-all duration-300 ease-in-out">Graduación</h1>
-            <p className="text-xs text-gray-300 transition-all duration-300 ease-in-out">Sistema de Gestión</p>
+            <h1 className="text-lg font-semibold logo-title tracking-wide transition-all duration-300 ease-in-out">Graduación</h1>
+            <p className="text-xs logo-sub transition-all duration-300 ease-in-out">Sistema de Gestión</p>
           </div>
         </div>
         )}
 
         {/* Navegación + Separador + Configuración */}
-        <div className="flex flex-col flex-1 justify-center transition-all duration-300 ease-in-out">
+        <div className="flex flex-col flex-1 justify-center transition-all duration-300 ease-in-out nav-wrapper">
           {/* Navegación */}
-          <nav className="px-3 pt-1 pb-2 space-y-3 transition-all duration-300 ease-in-out">
+          <nav className="nav px-3 pt-1 pb-2 space-y-3 transition-all duration-300 ease-in-out">
             {visibleItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -128,32 +157,28 @@ const Sidebar = () => {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 ease-out group ${
+                  className={`nav-link ${
                     active
-                      ? 'bg-blue-500/20 bg-white/10 text-white shadow-lg shadow-inner'
-                      : 'text-white hover:bg-white/5 hover:translate-x-1'
-                  }`}
+                      ? 'nav-link-active'
+                      : ''
+                  } group`}
                 >
-                  <div className="flex items-center gap-2 transition-all duration-300 ease-in-out">
-                    <Icon className="w-5 h-5 transition-all duration-300 ease-in-out group-hover:scale-110" />
-                    {!collapsed && <span className="font-medium tracking-wide transition-all duration-300 ease-in-out">{item.label}</span>}
+                  <div className="left">
+                    <Icon className="icon w-5 h-5 transition-all duration-300 ease-in-out group-hover:scale-110" />
+                    {!collapsed && <span className={`nav-label font-medium tracking-wide transition-all duration-300 ease-in-out`}>{item.label}</span>}
                   </div>
                   {item.badge && (
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      active
-                        ? 'bg-white/20 text-white'
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${active ? 'item-badge--active' : 'item-badge'}`}>
                       {item.badge}
                     </span>
                   )}
-                  {active && <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all duration-200" />}
+                  {active && <ChevronRight className="w-5 h-5 chev opacity-0 group-hover:opacity-100 transition-all duration-200" />}
                 </Link>
               );
             })}
           </nav>
           {/* Separador */}
-          <div className="mx-4 my-1 border-t border-white/20 transition-all duration-300 ease-in-out"></div>
+          <div className="mx-4 my-2 sidebar-divider transition-all duration-300 ease-in-out"></div>
         </div>
 
         {/* Botón Colapsar */}
