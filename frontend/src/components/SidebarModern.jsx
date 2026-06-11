@@ -10,7 +10,7 @@ const Sidebar = () => {
   const BRAND_MID = '#1E66B8';
   const BRAND_AZURE = '#6FD3FF';
   const TEXT_ON_DARK = '#EAF4FF';
-  const MUTED = '#7A8BAF';
+  const MUTED = '#DCEBFF';
   const DIVIDER = '#6FD3FF14';
   const HOVER_TINT = '#1E66B81A';
   const ACTIVE_FILL = '#6FD3FF24';
