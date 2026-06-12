@@ -53,7 +53,7 @@ const Header = ({ user, onLogout }) => {
 
   return (
     <header className="sticky top-0 z-40 border-b transition-all duration-300" style={{ 
-      background: `linear-gradient(180deg, ${BRAND_DEEP}, ${BRAND_MID})`,
+      background: `linear-gradient(90deg, ${BRAND_DEEP} 0%, ${BRAND_MID} 50%, ${BRAND_DEEP} 100%)`,
       backdropFilter: 'blur(12px)',
       borderColor: DIVIDER
     }}>
