@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 const Modal = ({
   isOpen,
@@ -14,7 +15,7 @@ const Modal = ({
   submitText = 'Guardar',
   submitVariant = 'primary',
   isLoading = false,
-  sizeClass = 'max-w-2xl',
+  sizeClass = 'max-w-xl',
 }) => {
   if (!isOpen) return null;
 
@@ -24,9 +25,9 @@ const Modal = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onMouseDown={handleBackdropMouseDown}
     >
       <div
@@ -73,7 +74,8 @@ const Modal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
