@@ -40,7 +40,7 @@ const AdminLayoutContent = ({ children }) => {
         <Header user={user} onLogout={logout} />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
+        <main className="relative flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
           <div className="px-4 py-6 max-w-7xl mx-auto">
             {children}
           </div>
