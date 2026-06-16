@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Bell, User, LogOut, Settings, Moon, Sun, HelpCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import Modal from './Modal';
+import HelpCenter from './HelpCenter';
 
 const Header = ({ user, onLogout }) => {
   // Paleta corporativa (reutiliza exactamente la del Sidebar)
@@ -18,6 +20,7 @@ const Header = ({ user, onLogout }) => {
   const { isDark, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   
   const notificationsRef = useRef(null);
   const notificationsButtonRef = useRef(null);
@@ -52,6 +55,7 @@ const Header = ({ user, onLogout }) => {
   }, [])
 
   return (
+    <>
     <header className="sticky top-0 z-40 border-b transition-all duration-300" style={{ 
       background: `linear-gradient(90deg, ${BRAND_DEEP} 0%, ${BRAND_MID} 50%, ${BRAND_DEEP} 100%)`,
       backdropFilter: 'blur(12px)',
@@ -134,7 +138,7 @@ const Header = ({ user, onLogout }) => {
           <div className="flex items-center gap-4">
             {/* Botón Ayuda */}
             <button
-              onClick={() => console.log('Abrir ayuda')}
+              onClick={() => setShowHelp(true)}
               className="header-action p-2 rounded-lg"
               title="Ayuda"
             >
@@ -248,6 +252,15 @@ const Header = ({ user, onLogout }) => {
         </div>
       </div>
     </header>
+      <Modal
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        title="Centro de Ayuda"
+        sizeClass="max-w-2xl"
+      >
+        <HelpCenter />
+      </Modal>
+    </>
   );
 };
 

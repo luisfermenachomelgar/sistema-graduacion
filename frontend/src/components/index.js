@@ -9,3 +9,4 @@ export { default as Table } from './Table';
 export { default as Alert } from './Alert';
 export { default as PageHeader } from './PageHeader';
 export { default as SectionCard } from './SectionCard';
+export { default as HelpCenter } from './HelpCenter';
