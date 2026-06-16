@@ -225,7 +225,16 @@ const Documentos = () => {
       key: 'postulacion',
       label: 'Postulación',
       sortable: true,
-      render: (value) => `#${value}`,
+      render: (value, row) => {
+        const postulanteNombre = row.postulante_nombre || '-';
+        const modalidadNombre = row.modalidad_nombre || '-';
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900 dark:text-gray-100">{postulanteNombre}</span>
+            <span className="text-xs text-gray-600 dark:text-gray-400">{modalidadNombre}</span>
+          </div>
+        );
+      },
     },
     {
       key: 'estado',

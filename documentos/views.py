@@ -28,6 +28,7 @@ class CustomPagination(PageNumberPagination):
 class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
     queryset = DocumentoPostulacion.objects.select_related(
         'postulacion__postulante__usuario',  # FASE 2B: Complete chain (N+1 fix)
+        'postulacion__modalidad',  # FASE 2C: Expose modalidad_nombre
         'tipo_documento',
         'revisado_por',
     ).all()

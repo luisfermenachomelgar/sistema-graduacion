@@ -50,6 +50,12 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
     revisado_por_nombre = serializers.CharField(
         source='revisado_por.get_full_name', read_only=True, allow_null=True
     )
+    postulante_nombre = serializers.CharField(
+        source='postulacion.postulante.get_full_name', read_only=True
+    )
+    modalidad_nombre = serializers.CharField(
+        source='postulacion.modalidad.nombre', read_only=True
+    )
     archivo_url = serializers.SerializerMethodField()
     archivo_tipo = serializers.SerializerMethodField()
     archivo_tamaño = serializers.SerializerMethodField()
@@ -58,6 +64,7 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
         model = DocumentoPostulacion
         fields = [
             'id', 'postulacion', 'tipo_documento', 'tipo_documento_nombre',
+            'postulante_nombre', 'modalidad_nombre',
             'archivo', 'archivo_url', 'archivo_tipo', 'archivo_tamaño',
             'estado', 'estado_display', 'comentario_revision',
             'revisado_por', 'revisado_por_nombre',
