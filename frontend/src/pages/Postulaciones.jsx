@@ -156,7 +156,6 @@ const Postulaciones = () => {
         anio_academico: formData.anio_academico,
         semestre_academico: formData.semestre_academico,
         estado: formData.estado,
-        estado_general: formData.estado_general,
         modalidad: formData.modalidad,
         etapa_actual: formData.etapa_actual || null,
         tutor: formData.tutor,
@@ -502,15 +501,16 @@ const Postulaciones = () => {
                 required
               />
 
-              <FormField
-                label="Estado General"
-                name="estado_general"
-                type="select"
-                value={formData.estado_general}
-                onChange={handleInputChange}
-                options={ESTADO_GENERAL_OPTIONS}
-                required
-              />
+              {isEditMode ? (
+                <FormField
+                  label="Estado General"
+                  name="estado_general"
+                  type="text"
+                  value={formData.estado_general}
+                  readOnly
+                  className="sm:col-span-2"
+                />
+              ) : null}
 
               <FormField
                 label="Observaciones"

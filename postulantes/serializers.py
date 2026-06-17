@@ -104,7 +104,7 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
             'estado', 'estado_display', 'estado_general', 'estado_general_display',
             'observaciones', 'fecha_postulacion'
         ]
-        read_only_fields = ['id', 'fecha_postulacion']
+        read_only_fields = ['id', 'fecha_postulacion', 'estado_general']
     
     def validate(self, attrs):
         """Valida que la etapa pertenezca a la modalidad."""
