@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Users, FileText, CheckCircle, Zap } from 'lucide-react';
 
-const StatsCards = ({ stats = {} }) => {
+const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8' }) => {
   const defaultStats = {
     totalPostulantes: { value: 0, change: 0, icon: Users, color: 'blue' },
     documentosPendientes: { value: 0, change: 0, icon: FileText, color: 'yellow' },
@@ -9,11 +9,12 @@ const StatsCards = ({ stats = {} }) => {
     tasaAprobacion: { value: 0, change: 0, icon: Zap, color: 'purple' },
   };
 
-  // Merge profundo: preserva iconos del default si no están en stats
-  const data = Object.keys(defaultStats).reduce((acc, key) => {
-    acc[key] = { ...defaultStats[key], ...(stats[key] || {}) };
-    return acc;
-  }, {});
+  const titles = {
+    totalPostulantes: 'Total Postulantes',
+    documentosPendientes: 'Documentos Pendientes',
+    graduados: 'Graduados',
+    tasaAprobacion: 'Tasa de Aprobación',
+  };
 
   const getColorClasses = (color) => {
     const colors = {
@@ -21,6 +22,9 @@ const StatsCards = ({ stats = {} }) => {
       yellow: 'from-yellow-500 to-orange-600 dark:from-yellow-600 dark:to-orange-700',
       green: 'from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700',
       purple: 'from-purple-500 to-pink-600 dark:from-purple-600 dark:to-pink-700',
+      cyan: 'from-cyan-500 to-cyan-600 dark:from-cyan-600 dark:to-cyan-700',
+      orange: 'from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700',
+      indigo: 'from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700',
     };
     return colors[color] || colors.blue;
   };
@@ -31,11 +35,32 @@ const StatsCards = ({ stats = {} }) => {
       yellow: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
       green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
       purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+      cyan: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400',
+      orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+      indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
     };
     return colors[color] || colors.blue;
   };
 
-  const StatCard = ({ title, value, change, Icon, colorClass, bgColorClass }) => {
+  const buildCard = ({ title, value = 0, change = 0, Icon = Users, color = 'blue', suffix = '' }) => ({
+    title,
+    value,
+    change,
+    Icon,
+    suffix,
+    colorClass: getColorClasses(color),
+    bgColorClass: getIconBgColor(color),
+  });
+
+  const cardItems = cards.length > 0
+    ? cards.map(buildCard)
+    : Object.keys(defaultStats).map((key) => buildCard({
+        title: titles[key],
+        ...defaultStats[key],
+        ...(stats[key] || {}),
+      }));
+
+  const StatCard = ({ title, value, change, Icon, colorClass, bgColorClass, suffix }) => {
     const isPositive = change >= 0;
 
     return (
@@ -49,8 +74,8 @@ const StatsCards = ({ stats = {} }) => {
                 {title}
               </p>
               <h3 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
-                {typeof value === 'number' && value > 100 ? value : value}
-                {title.includes('Tasa') ? '%' : ''}
+                {value}
+                {suffix}
               </h3>
 
               {/* Cambio */}
@@ -80,39 +105,19 @@ const StatsCards = ({ stats = {} }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-      <StatCard
-        title="Total Postulantes"
-        value={data.totalPostulantes.value}
-        change={data.totalPostulantes.change}
-        Icon={data.totalPostulantes.icon}
-        colorClass={getColorClasses(data.totalPostulantes.color)}
-        bgColorClass={getIconBgColor(data.totalPostulantes.color)}
-      />
-      <StatCard
-        title="Documentos Pendientes"
-        value={data.documentosPendientes.value}
-        change={data.documentosPendientes.change}
-        Icon={data.documentosPendientes.icon}
-        colorClass={getColorClasses(data.documentosPendientes.color)}
-        bgColorClass={getIconBgColor(data.documentosPendientes.color)}
-      />
-      <StatCard
-        title="Graduados"
-        value={data.graduados.value}
-        change={data.graduados.change}
-        Icon={data.graduados.icon}
-        colorClass={getColorClasses(data.graduados.color)}
-        bgColorClass={getIconBgColor(data.graduados.color)}
-      />
-      <StatCard
-        title="Tasa de Aprobación"
-        value={data.tasaAprobacion.value}
-        change={data.tasaAprobacion.change}
-        Icon={data.tasaAprobacion.icon}
-        colorClass={getColorClasses(data.tasaAprobacion.color)}
-        bgColorClass={getIconBgColor(data.tasaAprobacion.color)}
-      />
+    <div className={gridClass}>
+      {cardItems.map((card, index) => (
+        <StatCard
+          key={`${card.title}-${index}`}
+          title={card.title}
+          value={card.value}
+          change={card.change}
+          Icon={card.Icon}
+          suffix={card.suffix}
+          colorClass={card.colorClass}
+          bgColorClass={card.bgColorClass}
+        />
+      ))}
     </div>
   );
 };

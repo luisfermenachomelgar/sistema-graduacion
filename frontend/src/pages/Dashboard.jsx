@@ -11,7 +11,7 @@ import { PageHeader } from '../components';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
-import { AlertCircle, LoaderCircle } from 'lucide-react';
+import { AlertCircle, LoaderCircle, TrendingUp, CheckCircle, Zap } from 'lucide-react';
 
 const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
 
@@ -27,6 +27,8 @@ let dashboardCache = {
   timestamp: 0,
   dashboardStats: null,
   postulantesRecientes: [],
+  ultimasPostulaciones: [],
+  ultimosDocumentos: [],
   barChartData: null,
   lineChartData: null,
   pieChartData: null,
@@ -40,6 +42,8 @@ const Dashboard = () => {
 
   const [dashboardStats, setDashboardStats] = useState(dashboardCache.dashboardStats);
   const [postulantesRecientes, setPostulantesRecientes] = useState(dashboardCache.postulantesRecientes || []);
+  const [ultimasPostulaciones, setUltimasPostulaciones] = useState(dashboardCache.ultimasPostulaciones || []);
+  const [ultimosDocumentos, setUltimosDocumentos] = useState(dashboardCache.ultimosDocumentos || []);
   const [barChartData, setBarChartData] = useState(dashboardCache.barChartData);
   const [lineChartData, setLineChartData] = useState(dashboardCache.lineChartData);
   const [pieChartData, setPieChartData] = useState(dashboardCache.pieChartData);
@@ -74,6 +78,79 @@ const Dashboard = () => {
     },
   ];
 
+  const ultimasPostulacionesColumns = [
+    {
+      key: 'titulo_trabajo',
+      label: 'Título',
+      sortable: true,
+      render: (value) => value || '-',
+    },
+    {
+      key: 'postulante_nombre',
+      label: 'Postulante',
+      sortable: true,
+      render: (value) => value || '-',
+    },
+    {
+      key: 'modalidad_nombre',
+      label: 'Modalidad',
+      sortable: true,
+      render: (value) => value || '-',
+    },
+    {
+      key: 'estado_general',
+      label: 'Estado',
+      render: (value) => {
+        const badgeClass = {
+          'EN_PROCESO': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+          'PERFIL_APROBADO': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+          'PRIVADA_APROBADA': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+          'PUBLICA_APROBADA': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200',
+          'TITULADO': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200',
+        }[value] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200';
+        return <span className={`px-2 py-1 rounded text-sm font-medium ${badgeClass}`}>{value || '-'}</span>;
+      },
+    },
+    {
+      key: 'fecha_postulacion',
+      label: 'Fecha',
+      sortable: true,
+      render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-',
+    },
+  ];
+
+  const ultimosDocumentosColumns = [
+    {
+      key: 'tipo_documento_nombre',
+      label: 'Tipo',
+      sortable: true,
+      render: (value) => value || '-',
+    },
+    {
+      key: 'postulante_nombre',
+      label: 'Postulante',
+      render: (value) => value || '-',
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      render: (value) => {
+        const badgeClass = {
+          'aprobado': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+          'pendiente': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+          'rechazado': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+        }[value] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200';
+        return <span className={`px-2 py-1 rounded text-sm font-medium ${badgeClass}`}>{value || '-'}</span>;
+      },
+    },
+    {
+      key: 'fecha_subida',
+      label: 'Fecha',
+      sortable: true,
+      render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-',
+    },
+  ];
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -97,6 +174,8 @@ const Dashboard = () => {
         timestamp: 0,
         dashboardStats: null,
         postulantesRecientes: [],
+        ultimasPostulaciones: [],
+        ultimosDocumentos: [],
         barChartData: null,
         lineChartData: null,
         pieChartData: null,
@@ -111,6 +190,14 @@ const Dashboard = () => {
 
     if (dashboardCache.postulantesRecientes?.length) {
       setPostulantesRecientes(dashboardCache.postulantesRecientes);
+    }
+
+    if (dashboardCache.ultimasPostulaciones?.length) {
+      setUltimasPostulaciones(dashboardCache.ultimasPostulaciones);
+    }
+
+    if (dashboardCache.ultimosDocumentos?.length) {
+      setUltimosDocumentos(dashboardCache.ultimosDocumentos);
     }
 
     if (dashboardCache.barChartData) {
@@ -171,8 +258,10 @@ const Dashboard = () => {
 
       setError('');
 
-      const [postulantesResult, chartResponse] = await Promise.all([
+      const [postulantesResult, postulacionesResult, documentosResult, chartResponse] = await Promise.all([
         api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, { limit: 5 }),
+        api.getAll('/api/postulaciones/', { page_size: 5 }),
+        api.getAll('/api/documentos/', { page_size: 5 }),
         fetch('/api/reportes/dashboard-chart-data/?meses=6', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -189,6 +278,28 @@ const Dashboard = () => {
           token,
           timestamp: Date.now(),
           postulantesRecientes: data,
+        };
+      }
+
+      if (postulacionesResult.success) {
+        const data = normalizePostulantes(postulacionesResult.data);
+        setUltimasPostulaciones(data);
+        dashboardCache = {
+          ...dashboardCache,
+          token,
+          timestamp: Date.now(),
+          ultimasPostulaciones: data,
+        };
+      }
+
+      if (documentosResult.success) {
+        const data = normalizePostulantes(documentosResult.data);
+        setUltimosDocumentos(data);
+        dashboardCache = {
+          ...dashboardCache,
+          token,
+          timestamp: Date.now(),
+          ultimosDocumentos: data,
         };
       }
 
@@ -295,6 +406,33 @@ const Dashboard = () => {
               } : {}}
             />
 
+            <StatsCards
+              cards={[
+                {
+                  title: 'Total Postulaciones',
+                  value: dashboardStats?.total_postulaciones || 0,
+                  change: 0,
+                  Icon: TrendingUp,
+                  color: 'cyan',
+                },
+                {
+                  title: 'Total Documentos',
+                  value: dashboardStats?.total_documentos || 0,
+                  change: 0,
+                  Icon: CheckCircle,
+                  color: 'green',
+                },
+                {
+                  title: 'Modalidades Disponibles',
+                  value: dashboardStats?.total_modalidades || 0,
+                  change: 0,
+                  Icon: Zap,
+                  color: 'purple',
+                },
+              ]}
+              gridClass="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8"
+            />
+
             {/* Gráficos */}
             <Charts
               isDark={isDark}
@@ -303,6 +441,32 @@ const Dashboard = () => {
               pieChartData={pieChartData}
               metrics={metrics}
             />
+
+            {/* Tabla de Últimas Postulaciones */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Últimas Postulaciones
+              </h2>
+              <DataTable
+                data={ultimasPostulaciones}
+                columns={ultimasPostulacionesColumns}
+                pageSize={5}
+                isDark={isDark}
+              />
+            </div>
+
+            {/* Tabla de Últimos Documentos */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Últimos Documentos
+              </h2>
+              <DataTable
+                data={ultimosDocumentos}
+                columns={ultimosDocumentosColumns}
+                pageSize={5}
+                isDark={isDark}
+              />
+            </div>
 
             {/* Tabla de Postulantes Recientes */}
             {postulantesRecientes.length > 0 && (

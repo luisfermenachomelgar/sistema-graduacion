@@ -16,6 +16,7 @@ const FormField = ({
   error,
   helperText,
   disabled = false,
+  readOnly = false,
   options = [], // Para select
   rows, // Para textarea
   className = '',
@@ -57,6 +58,7 @@ const FormField = ({
             onChange={onChange}
             placeholder={placeholder}
             disabled={disabled}
+            readOnly={readOnly}
             rows={rows || 3}
             className={`${inputClass} resize-y leading-6`}
           />
@@ -90,6 +92,7 @@ const FormField = ({
             onChange={onChange}
             placeholder={placeholder}
             disabled={disabled}
+            readOnly={readOnly}
             className={inputClass}
           />
         );

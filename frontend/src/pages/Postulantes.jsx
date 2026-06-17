@@ -15,6 +15,9 @@ import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
 import { Plus } from 'lucide-react';
 
+const FIXED_CARRERA = 'Ingeniería de Sistemas';
+const FIXED_FACULTAD = 'Facultad de Ingeniería y Tecnología';
+
 const INITIAL_FORM_DATA = {
   usuario: '',
   nombre: '',
@@ -22,8 +25,8 @@ const INITIAL_FORM_DATA = {
   ci: '',
   codigo_estudiante: '',
   telefono: '',
-  carrera: '',
-  facultad: '',
+  carrera: FIXED_CARRERA,
+  facultad: FIXED_FACULTAD,
 };
 
 // NOTE: cache removed - rely on useCrud state directly
@@ -134,8 +137,8 @@ const Postulantes = () => {
         ci: formData.ci,
         codigo_estudiante: formData.codigo_estudiante,
         telefono: formData.telefono,
-        carrera: formData.carrera,
-        facultad: formData.facultad,
+        carrera: FIXED_CARRERA,
+        facultad: FIXED_FACULTAD,
       };
 
       const result = isEditMode
@@ -264,7 +267,15 @@ const Postulantes = () => {
               data={postulantes || []}
               columns={columns}
               pageSize={10}
-              onEdit={canManagePostulantes ? (row) => openModal(isAdmin ? { ...row, usuario: row.usuario_id || '' } : row) : undefined}
+              onEdit={canManagePostulantes ? (row) => {
+                const rowWithFixedValues = {
+                  ...row,
+                  carrera: FIXED_CARRERA,
+                  facultad: FIXED_FACULTAD,
+                  ...(isAdmin ? { usuario: row.usuario_id || '' } : {}),
+                };
+                openModal(rowWithFixedValues);
+              } : undefined}
               onDelete={canManagePostulantes ? handleDelete : undefined}
             />
           )
@@ -365,7 +376,8 @@ const Postulantes = () => {
                   type="text"
                   value={formData.carrera}
                   onChange={handleInputChange}
-                  placeholder="Ingeniería"
+                  placeholder="Ingeniería de Sistemas"
+                  readOnly
                 />
                 <FormField
                   label="Facultad"
@@ -373,7 +385,8 @@ const Postulantes = () => {
                   type="text"
                   value={formData.facultad}
                   onChange={handleInputChange}
-                  placeholder="Facultad de Tecnología"
+                  placeholder="Facultad de Ingeniería y Tecnología"
+                  readOnly
                   className="sm:col-span-2"
                 />
               </div>
