@@ -14,6 +14,55 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'role', 'role_display', 'is_active', 'date_joined'
         ]
         read_only_fields = ['id', 'date_joined']
+    
+    def validate_username(self, value):
+        """
+        Validar que username sea único, excluyendo la instancia actual durante edición.
+        
+        IMPORTANTE: Esto resuelve el problema donde al editar un usuario sin cambiar
+        el username, el sistema devolvía "A user with that username already exists."
+        
+        Flujo:
+        - Si es CREACIÓN (POST): self.instance es None, valida contra todos los usuarios
+        - Si es EDICIÓN (PUT/PATCH): self.instance existe, excluye el usuario actual
+        """
+        instance = self.instance
+        
+        # Buscar otro usuario con el mismo username
+        queryset = CustomUser.objects.filter(username=value)
+        
+        # Si estamos editando un usuario existente, excluir la instancia actual
+        if instance is not None:
+            queryset = queryset.exclude(pk=instance.pk)
+        
+        # Si existe otro usuario con ese username, retornar error
+        if queryset.exists():
+            raise serializers.ValidationError(
+                "A user with that username already exists."
+            )
+        
+        return value
+
+    def validate(self, attrs):
+        """
+        Validaciones globales: impedir cambios críticos en la cuenta maestra.
+        Se basa únicamente en `is_superuser`.
+        """
+        instance = getattr(self, 'instance', None)
+        if instance and instance.is_superuser:
+            # Prohibir desactivar
+            if 'is_active' in attrs and not bool(attrs.get('is_active')):
+                raise serializers.ValidationError({'is_active': 'La cuenta maestra del sistema no puede ser desactivada.'})
+
+            # Prohibir cambio de rol
+            if 'role' in attrs and attrs.get('role') != 'admin':
+                raise serializers.ValidationError({'role': 'La cuenta maestra del sistema debe conservar el rol de Administrador.'})
+
+            # Prohibir revocar is_superuser
+            if 'is_superuser' in attrs and not bool(attrs.get('is_superuser')):
+                raise serializers.ValidationError({'is_superuser': 'La cuenta maestra del sistema no puede perder privilegios de superusuario.'})
+
+        return attrs
 
 
 class CustomUserDetailSerializer(serializers.ModelSerializer):

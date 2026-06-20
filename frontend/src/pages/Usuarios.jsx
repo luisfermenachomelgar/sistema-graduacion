@@ -259,6 +259,7 @@ const Usuarios = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
+                disabled={!!formData.is_superuser}
                 options={[
                   { id: 'admin', label: 'Administrador' },
                   { id: 'administ', label: 'Administrativo' },
@@ -271,8 +272,9 @@ const Usuarios = () => {
                   label="Usuario activo"
                   type="checkbox"
                   name="is_active"
-                  value={formData.is_active}
-                  onChange={handleInputChange}
+                    value={formData.is_active}
+                    onChange={handleInputChange}
+                    disabled={!!formData.is_superuser}
                 />
               </div>
             </div>
@@ -297,8 +299,8 @@ const Usuarios = () => {
               password: '',
               id: user.id,
             };
-            setFormData(userData);
-            openModal();
+            // ✅ CORRECCIÓN: Pasar userData a openModal para establecer isEditMode=true
+            openModal(userData);
           }}
           onDelete={handleDelete}
           keyField="id"

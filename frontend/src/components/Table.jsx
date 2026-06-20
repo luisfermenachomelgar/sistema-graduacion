@@ -73,7 +73,7 @@ const Table = ({ columns, data, loading, onEdit, onDelete, onView }) => {
                         ✏️
                       </button>
                     )}
-                    {onDelete && (
+                    {onDelete && !row.is_superuser && (
                       <button
                         onClick={() => {
                           if (window.confirm('¿Estás seguro de que deseas eliminar?')) {

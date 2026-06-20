@@ -28,6 +28,16 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """Crear nuevo usuario con password."""
+        # Evitar crear nuevas cuentas maestras (basado en is_superuser)
+        trying_master = bool(request.data.get('is_superuser'))
+        master_exists = CustomUser.objects.filter(is_superuser=True).exists()
+
+        if trying_master and master_exists:
+            return Response(
+                {'detail': 'Ya existe una cuenta maestra del sistema. No se pueden crear cuentas maestras adicionales.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = CustomUserSerializer(data=request.data)
         if serializer.is_valid():
             password = request.data.get('password')
@@ -68,6 +78,30 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         else:
             data = request.data
         
+        # Protección específica para la cuenta maestra (basada en is_superuser)
+        is_super = bool(instance.is_superuser)
+        if is_super:
+            # No permitir desactivar la cuenta maestra
+            if 'is_active' in data and not bool(data.get('is_active')):
+                return Response(
+                    {'is_active': 'La cuenta maestra del sistema no puede ser desactivada.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # No permitir cambiar el rol de la cuenta maestra
+            if 'role' in data and data.get('role') != 'admin':
+                return Response(
+                    {'role': 'La cuenta maestra del sistema debe conservar el rol de Administrador.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # No permitir revocar is_superuser
+            if 'is_superuser' in data and not bool(data.get('is_superuser')):
+                return Response(
+                    {'is_superuser': 'La cuenta maestra del sistema no puede perder privilegios de superusuario.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         serializer = CustomUserSerializer(
             instance, data=data, partial=partial
         )
@@ -79,3 +113,14 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        """Proteger eliminación de la cuenta maestra (is_superuser)."""
+        instance = self.get_object()
+        is_super = bool(instance.is_superuser)
+        if is_super:
+            return Response(
+                {'detail': 'La cuenta maestra del sistema no puede ser eliminada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)
