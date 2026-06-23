@@ -52,11 +52,19 @@ const Reportes = () => {
   const handleExport = async () => {
     try {
       setExportingTutores(true);
+      const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
+      console.log('Exportar Excel - token present:', !!token);
+      console.log('Exportar Excel request:', {
+        url: API_CONFIG.ENDPOINTS.EXPORTAR_ESTADISTICAS,
+        responseType: 'blob'
+      });
+
       const response = await axiosInstance.get(
         API_CONFIG.ENDPOINTS.EXPORTAR_ESTADISTICAS,
         { responseType: 'blob' }
       );
       
+      console.log('Export response status:', response.status);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -67,6 +75,20 @@ const Reportes = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export failed:', err);
+      console.log('=== ERROR RESPONSE DATA ===');
+      console.log('Status:', err.response?.status);
+      console.log('Headers:', err.response?.headers);
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        console.log('ERROR BODY:', text);
+      } else if (err.response?.data && typeof err.response.data.text === 'function') {
+        const text = await err.response.data.text();
+        console.log('ERROR BODY:', text);
+      } else {
+        console.log('Data:', err.response?.data);
+      }
+      console.log('Config:', err.config);
+      console.log('Full error:', err);
       setError('Error al exportar estadísticas');
     } finally {
       setExportingTutores(false);

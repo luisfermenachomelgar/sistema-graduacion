@@ -66,7 +66,8 @@ axiosInstance.interceptors.request.use(
       console.log('API Request:', {
         method: config.method.toUpperCase(),
         url: config.url,
-        hasAuth: !!token
+        hasAuth: !!token,
+        authorization: config.headers.Authorization
       });
     }
     

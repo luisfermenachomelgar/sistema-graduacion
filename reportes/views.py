@@ -108,22 +108,29 @@ class ExportarEstadisticasTutoresView(APIView):
     permission_classes = [PuedeVerDashboardInstitucionalPermission]
 
     def get(self, request):
+        print("EXPORTAR TUTORES VIEW EJECUTADA")
+        logger.info("ExportarEstadisticasTutoresView request - path: %s", request.path)
+        logger.info("ExportarEstadisticasTutoresView headers authorization: %s", request.headers.get('Authorization'))
+        logger.info("ExportarEstadisticasTutoresView query params: %s", request.query_params.dict())
+
+        # Permitir exportación sin filtros (todos los tutores)
+        year = request.query_params.get('year') or None
+        carrera_id = request.query_params.get('carrera_id') or None
+
         try:
-            logger.info("ExportarEstadisticasTutoresView request - year: %s, carrera_id: %s", 
-                       request.query_params.get('year'), request.query_params.get('carrera_id'))
-            year = request.query_params.get('year')
-            carrera_id = request.query_params.get('carrera_id')
-            data = estadisticas_tutores(year, carrera_id)
-            if not data:
-                logger.warning("No data available for export - year: %s, carrera_id: %s", year, carrera_id)
-                return Response({'detail': 'No data available'}, status=400)
-            return generar_excel_tutores(data)
+            data = estadisticas_tutores(year, carrera_id) or []
         except Exception as e:
-            logger.error("Error en ExportarEstadisticasTutoresView: %s", str(e), exc_info=True)
-            return Response(
-                {'detail': 'Internal server error'},
-                status=500
-            )
+            logger.warning("Error obteniendo datos de tutores: %s - se retorna Excel vacío", str(e), exc_info=True)
+            data = []
+
+        try:
+            response = generar_excel_tutores(data)
+            logger.info("ExportarEstadisticasTutoresView response success, rows=%s", len(data))
+            return response
+        except Exception as e:
+            logger.error("Error generando Excel: %s", str(e), exc_info=True)
+            return generar_excel_tutores([])
+
 
 
 class DetalleAlumnosTutorView(APIView):

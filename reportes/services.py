@@ -906,12 +906,16 @@ def generar_excel_tutores(data: list[dict]) -> HttpResponse:
 
     # Datos
     for item in data:
-        ws.append([
-            item['tutor_id'],
-            item['nombre'],
-            item['total_titulados'],
-            item['tiempo_promedio_dias']
-        ])
+        try:
+            ws.append([
+                item.get('tutor_id', ''),
+                item.get('nombre', ''),
+                item.get('total_titulados', 0),
+                item.get('tiempo_promedio_dias', 0)
+            ])
+        except (KeyError, TypeError, ValueError) as e:
+            print(f"⚠️ Error procesando item de tutor: {e}")
+            continue
 
     # Ajustar ancho de columnas
     for i, column_cells in enumerate(ws.columns, 1):
