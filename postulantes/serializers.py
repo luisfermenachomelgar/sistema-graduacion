@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from .models import Notificacion, Postulacion, Postulante
 
 User = get_user_model()
@@ -60,6 +61,7 @@ class PostulanteDetailSerializer(serializers.ModelSerializer):
 class PostulacionListSerializer(serializers.ModelSerializer):
     """Serializer para listado de postulaciones."""
     postulante_nombre = serializers.SerializerMethodField()
+    modalidad = serializers.IntegerField(source='modalidad.id', read_only=True)
     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
     etapa_nombre = serializers.CharField(source='etapa_actual.nombre', read_only=True)
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
@@ -68,7 +70,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Postulacion
         fields = [
-            'id', 'postulante_nombre', 'modalidad_nombre', 'titulo_trabajo',
+            'id', 'postulante_nombre', 'modalidad', 'modalidad_nombre', 'titulo_trabajo',
             'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
             'estado_general', 'fecha_postulacion'
         ]
@@ -105,6 +107,13 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
             'observaciones', 'fecha_postulacion'
         ]
         read_only_fields = ['id', 'fecha_postulacion', 'estado_general']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Postulacion.objects.all(),
+                fields=['postulante', 'anio_academico', 'semestre_academico'],
+                message='El postulante ya cuenta con una postulación registrada para la gestión y período académico seleccionados.'
+            )
+        ]
     
     def validate(self, attrs):
         """Valida que la etapa pertenezca a la modalidad."""
@@ -121,6 +130,38 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
 
         if semestre_academico not in (1, 2):
             raise serializers.ValidationError({'semestre_academico': 'El semestre académico debe ser 1 o 2.'})
+
+        postulante = attrs.get('postulante') or getattr(self.instance, 'postulante', None)
+        if postulante is not None:
+            existing = Postulacion.objects.filter(
+                postulante=postulante,
+                anio_academico=anio_academico,
+                semestre_academico=semestre_academico,
+            )
+            if self.instance is not None:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError({
+                    'non_field_errors': [
+                        'El postulante ya cuenta con una postulación registrada para la gestión y período académico seleccionados.'
+                    ]
+                })
+
+        # Validación adicional: si el postulante ya fue rechazado en la misma modalidad
+        # no puede volver a postularse a esa modalidad en el futuro.
+        modalidad_obj = modalidad
+        if postulante is not None and modalidad_obj is not None:
+            rechazadas_qs = Postulacion.objects.filter(
+                postulante=postulante,
+                modalidad=modalidad_obj,
+                estado='rechazada',
+            )
+            if self.instance is not None:
+                rechazadas_qs = rechazadas_qs.exclude(pk=self.instance.pk)
+            if rechazadas_qs.exists():
+                raise serializers.ValidationError({
+                    'modalidad': 'El estudiante ya fue rechazado anteriormente en esta modalidad y no puede volver a postularse a la misma.'
+                })
 
         if modalidad and etapa_actual and etapa_actual.modalidad_id != modalidad.id:
             raise serializers.ValidationError(

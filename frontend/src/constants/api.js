@@ -46,6 +46,7 @@ export const API_CONFIG = {
     // Modalidades (Modalities)
     MODALIDADES: '/api/modalidades/',
     MODALIDAD_DETAIL: (id) => `/api/modalidades/${id}/`,
+    MODALIDAD_TIPOS_DOCUMENTO: (id) => `/api/modalidades/${id}/tipos-documento/`,
     MODALIDAD_REQUISITOS: (id) => `/api/modalidades/${id}/requisitos/`,
     MODALIDAD_REQUISITO_DETAIL: (modalidadId, requisitoId) => `/api/modalidades/${modalidadId}/requisitos/${requisitoId}/`,
     MODALIDAD_REQUISITO_DESCARGAR: (modalidadId, requisitoId) => `/api/modalidades/${modalidadId}/requisitos/${requisitoId}/descargar/`,

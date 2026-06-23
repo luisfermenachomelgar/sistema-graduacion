@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from config.permissions import CRUDModelPermission
+from documentos.models import ModalidadTipoDocumento
+from documentos.serializers import ModalidadTipoDocumentoSerializer
 from .models import Etapa, Modalidad, ModalidadRequisito
 from .serializers import EtapaSerializer, ModalidadRequisitoSerializer, ModalidadSerializer
 
@@ -82,6 +84,22 @@ class ModalidadViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='tipos-documento')
+    def tipos_documento(self, request, pk=None):
+        modalidad = self.get_object()
+        queryset = ModalidadTipoDocumento.objects.select_related('tipo_documento', 'etapa').filter(
+            modalidad=modalidad,
+            activo=True,
+            tipo_documento__activo=True,
+        )
+
+        etapa_id = request.query_params.get('etapa')
+        if etapa_id:
+            queryset = queryset.filter(etapa_id=etapa_id)
+
+        serializer = ModalidadTipoDocumentoSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'], url_path=r'requisitos/(?P<requisito_id>[^/.]+)/descargar')

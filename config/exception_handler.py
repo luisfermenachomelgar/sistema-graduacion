@@ -59,7 +59,14 @@ def custom_exception_handler(exc, context):
     # O: {"email": ["Invalid"]}
     # O: {"non_field_errors": ["..."] }
     elif isinstance(data, dict):
-        error_response["error"] = "Validation error"
+        if 'non_field_errors' in data:
+            non_field_errors = data['non_field_errors']
+            if isinstance(non_field_errors, list):
+                error_response["error"] = non_field_errors[0] if non_field_errors else "Validation error"
+            else:
+                error_response["error"] = str(non_field_errors)
+        else:
+            error_response["error"] = "Validation error"
         error_response["field_errors"] = data  # Preserva non_field_errors si existe
     
     # CASO 3: Lista (raro pero DRF puede retornar lista en algunos casos)

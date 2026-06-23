@@ -73,6 +73,7 @@ const Postulaciones = () => {
   const [modalidades, setModalidades] = useState([]);
   const [etapas, setEtapas] = useState([]);
   const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');
   
   const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
   const [filterAnioAcademico, setFilterAnioAcademico] = useState(searchParams.get('anio_academico') || '');
@@ -136,11 +137,12 @@ const Postulaciones = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError('');
+    setFormError('');
     setSuccess('');
 
     // Validar campos requeridos (dropdowns)
     if (!formData.postulante_id || !formData.modalidad || !formData.anio_academico || !formData.semestre_academico || !formData.titulo_trabajo) {
-      setError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo, Año y Semestre Académico)');
+      setFormError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo, Año y Semestre Académico)');
       setIsSubmitting(false);
       return;
     }
@@ -284,7 +286,7 @@ const Postulaciones = () => {
       </div>
 
       {/* Alerts */}
-      {error && <Alert type="error" message={error} onClose={() => setError('')} autoClose={false} />}
+      {formError && <Alert type="error" message={formError} onClose={() => setFormError('')} autoClose={false} />}
       {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
       {/* Filters */}

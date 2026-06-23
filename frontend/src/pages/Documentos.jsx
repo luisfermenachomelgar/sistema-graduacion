@@ -15,7 +15,6 @@ import { PageHeader, SectionCard } from '../components';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
 import { Plus, AlertCircle } from 'lucide-react';
-import axiosInstance from '../api/axios';
 
 const INITIAL_FORM_DATA = {
   postulacion: '',
@@ -55,7 +54,9 @@ const Documentos = () => {
   
   const [success, setSuccess] = useState('');
   const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [tiposDocumentoFiltrados, setTiposDocumentoFiltrados] = useState([]);
   const [postulaciones, setPostulaciones] = useState([]);
+  const [tiposDocumentoPorModalidad, setTiposDocumentoPorModalidad] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [archivoFile, setArchivoFile] = useState(null);
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
@@ -88,7 +89,60 @@ const Documentos = () => {
     }
   };
 
-  const handleInputChange = (e) => {
+  const fetchTiposDocumentoPorModalidad = async (modalidadId, etapaId = null) => {
+    if (!modalidadId) {
+      return [];
+    }
+
+    const cacheKey = `${modalidadId}:${etapaId || 'null'}`;
+    if (tiposDocumentoPorModalidad[cacheKey]) {
+      return tiposDocumentoPorModalidad[cacheKey];
+    }
+
+    try {
+      const url = API_CONFIG.ENDPOINTS.MODALIDAD_TIPOS_DOCUMENTO(modalidadId);
+      const params = etapaId ? { etapa: etapaId } : {};
+      const result = await api.getAll(url, params, { skipGlobalLoader: true });
+
+      if (result.success) {
+        const data = Array.isArray(result.data) ? result.data : result.data.results || [];
+        setTiposDocumentoPorModalidad((current) => ({
+          ...current,
+          [cacheKey]: data,
+        }));
+        return data;
+      }
+
+      return [];
+    } catch (err) {
+      console.error('Error fetching modalidad tipos documento:', err);
+      return [];
+    }
+  };
+
+  const getTiposDocumentoFiltrados = async (modalidadId, etapaId = null) => {
+    const modalidadTipos = await fetchTiposDocumentoPorModalidad(modalidadId, etapaId);
+    const deduplicated = [];
+    const seenDocumentos = new Set();
+
+    modalidadTipos.forEach((item) => {
+      const tipoDocumento = item.tipo_documento;
+      if (!tipoDocumento || seenDocumentos.has(tipoDocumento.id)) return;
+      seenDocumentos.add(tipoDocumento.id);
+      deduplicated.push(item);
+    });
+
+    const filtered = deduplicated.map((item) => ({
+      id: item.tipo_documento.id,
+      label: item.tipo_documento.nombre,
+      obligatorio: item.obligatorio,
+      etapa_nombre: item.etapa_nombre,
+    }));
+    setTiposDocumentoFiltrados(filtered);
+    return filtered;
+  };
+
+  const handleInputChange = async (e) => {
     const { name, value, files } = e.target;
     if (name === 'archivo') {
       const file = files?.[0] || null;
@@ -110,10 +164,30 @@ const Documentos = () => {
       setArchivoFile(file);
       return;
     }
-    setFormData({
+
+    const newValue = ['postulacion', 'tipo_documento'].includes(name) ? parseInt(value) : value;
+    const newFormData = {
       ...formData,
-      [name]: ['postulacion', 'tipo_documento'].includes(name) ? parseInt(value) : value,
-    });
+      [name]: newValue,
+    };
+
+    setFormData(newFormData);
+
+    if (name === 'postulacion' && newValue) {
+      const selectedPostulacion = postulaciones.find((p) => p.id === newValue);
+      const modalidadId = selectedPostulacion?.modalidad?.id || selectedPostulacion?.modalidad;
+      const etapaId = selectedPostulacion?.etapa_actual || undefined;
+
+      if (modalidadId) {
+        await getTiposDocumentoFiltrados(modalidadId, etapaId);
+        setFormData((prev) => ({
+          ...prev,
+          tipo_documento: '',
+        }));
+      } else {
+        setTiposDocumentoFiltrados([]);
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -170,6 +244,25 @@ const Documentos = () => {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const loadFilteredTipos = async () => {
+      if (!formData.postulacion) {
+        setTiposDocumentoFiltrados([]);
+        return;
+      }
+
+      const selectedPostulacion = postulaciones.find((p) => p.id === formData.postulacion);
+      const modalidadId = selectedPostulacion?.modalidad?.id || selectedPostulacion?.modalidad;
+      const etapaId = selectedPostulacion?.etapa_actual || undefined;
+
+      if (modalidadId) {
+        await getTiposDocumentoFiltrados(modalidadId, etapaId);
+      }
+    };
+
+    loadFilteredTipos();
+  }, [formData.postulacion, postulaciones]);
 
   const handleDelete = async (documento) => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este documento?')) return;
@@ -300,9 +393,8 @@ const Documentos = () => {
             columns={columns}
             pageSize={10}
             onEdit={!isStudent ? (row) => {
-              setFormData(row);
               setArchivoFile(null);
-              openModal();
+              openModal(row);
             } : undefined}
             onDelete={!isStudent ? handleDelete : undefined}
           />
@@ -344,9 +436,9 @@ const Documentos = () => {
                   type="select"
                   value={formData.tipo_documento}
                   onChange={handleInputChange}
-                  options={tiposDocumento.map((t) => ({
+                  options={(formData.postulacion ? tiposDocumentoFiltrados : []).map((t) => ({
                     id: t.id,
-                    label: t.nombre || t.tipo,
+                    label: t.label || t.nombre,
                   }))}
                   required
                   className="md:col-span-1"
@@ -386,7 +478,7 @@ const Documentos = () => {
                     type="file"
                     name="archivo"
                     onChange={handleInputChange}
-                    required
+                    required={!isEditMode}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                     className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />

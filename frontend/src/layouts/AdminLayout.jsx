@@ -24,9 +24,11 @@ const AdminLayoutContent = ({ children }) => {
         gutter={8}
         toastOptions={{
           duration: 4000,
+          // Default container style left neutral; toasts will provide their own styling
           style: {
-            background: '#fff',
-            color: '#333',
+            background: 'transparent',
+            color: '#fff',
+            boxShadow: 'none',
           },
         }}
       />
