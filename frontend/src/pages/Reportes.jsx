@@ -249,6 +249,70 @@ const Reportes = () => {
     );
   };
 
+  const renderCarrerasStats = () => {
+    if (!reportData) return null;
+
+    if (!Array.isArray(reportData) || reportData.length === 0) {
+      return (
+        <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-gray-600 dark:text-gray-400">No existen datos para mostrar.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
+                  Carrera
+                </th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
+                  Total Iniciados
+                </th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
+                  Total Titulados
+                </th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
+                  Tasa de Titulación (%)
+                </th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
+                  Tiempo Promedio (días)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportData.map((item, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <td className="py-3 px-4 text-gray-900 dark:text-gray-200">
+                    {item.carrera || 'Sin Carrera Asignada'}
+                  </td>
+                  <td className="py-3 px-4 text-center text-gray-900 dark:text-gray-200">
+                    {item.total_iniciados ?? 0}
+                  </td>
+                  <td className="py-3 px-4 text-center text-gray-900 dark:text-gray-200">
+                    {item.total_titulados ?? 0}
+                  </td>
+                  <td className="py-3 px-4 text-center font-semibold text-gray-900 dark:text-white">
+                    {item.tasa_titulacion != null ? `${item.tasa_titulacion.toFixed(2)}%` : '0%'}
+                  </td>
+                  <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">
+                    {item.tiempo_promedio_dias != null ? `${item.tiempo_promedio_dias.toFixed(2)} días` : '0 días'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -332,16 +396,7 @@ const Reportes = () => {
             )}
             {activeTab === 'tutores' && renderTutoresStats()}
 
-            {activeTab === 'carreras' && reportData && (
-              <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                  Eficiencia por Carrera
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Datos de eficiencia por carrera: {JSON.stringify(reportData).substring(0, 100)}...
-                </p>
-              </div>
-            )}
+            {activeTab === 'carreras' && renderCarrerasStats()}
 
             {/* Footer */}
             <div className="mt-8 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">

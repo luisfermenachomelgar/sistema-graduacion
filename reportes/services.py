@@ -1,4 +1,4 @@
-from django.db.models import Avg, Case, Count, DurationField, ExpressionWrapper, F, FloatField, Max, Q, Value, When
+from django.db.models import Avg, Case, Count, DurationField, ExpressionWrapper, F, FloatField, Max, Q, Value, When, OuterRef, Subquery
 from django.db.models.functions import Coalesce, Now, TruncMonth
 from io import BytesIO
 import os
@@ -893,8 +893,14 @@ def reporte_eficiencia_carreras(year=None) -> list[dict]:
         ).order_by('-total_titulados')
 
         # Calcular tiempos promedio solo para los titulados
+        # Subquery para obtener fecha final por postulación (evita agregación anidada)
+        latest_revision = Postulacion.objects.filter(pk=OuterRef('pk')).annotate(
+            fecha_fin=Coalesce(Max('documentos__fecha_revision'), Now())
+        ).values('fecha_fin')[:1]
+
         tiempos_queryset = queryset.filter(estado_general='TITULADO').annotate(
-            fecha_fin=Coalesce(Max('documentos__fecha_revision'), Now()),
+            fecha_fin=Subquery(latest_revision)
+        ).annotate(
             duracion=ExpressionWrapper(
                 F('fecha_fin') - F('fecha_postulacion'),
                 output_field=DurationField(),
