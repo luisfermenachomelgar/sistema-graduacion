@@ -666,9 +666,72 @@ def generar_pdf_dashboard(data: dict, fecha_inicio: str | None, fecha_fin: str |
 def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
     """
     Calcula estadísticas de rendimiento de tutores:
-    - Total de alumnos titulados.
-    - Tiempo promedio de titulación (en días).
+    - Aprobados/rechazados por tutor.
+    - Total procesados.
+    - Porcentaje de aprobación.
     """
+    try:
+        queryset = Postulacion.objects.exclude(tutor__isnull=True).exclude(tutor='')
+
+        if carrera_id:
+            try:
+                carrera_value = str(carrera_id).strip()
+                if carrera_value:
+                    queryset = queryset.filter(postulante__carrera__iexact=carrera_value)
+            except (ValueError, TypeError):
+                pass
+
+        if year:
+            try:
+                year_int = int(year)
+                queryset = queryset.filter(fecha_postulacion__year=year_int)
+            except (ValueError, TypeError):
+                pass
+
+        stats = (
+            queryset.values('tutor')
+            .annotate(
+                aprobados=Count('id', filter=Q(estado='aprobada')),
+                rechazados=Count('id', filter=Q(estado='rechazada')),
+                total_procesados=Count('id', filter=Q(estado__in=['aprobada', 'rechazada'])),
+            )
+            .order_by('-total_procesados')
+        )
+
+        results = []
+        for item in stats:
+            try:
+                tutor_nombre = (item.get('tutor') or '').strip()
+                aprobados = int(item.get('aprobados') or 0)
+                rechazados = int(item.get('rechazados') or 0)
+                total_procesados = int(item.get('total_procesados') or 0)
+
+                aprobacion_porcentaje = 0.0
+                if total_procesados > 0:
+                    aprobacion_porcentaje = round((aprobados / total_procesados) * 100, 1)
+
+                results.append({
+                    'tutor_id': _tutor_hash(tutor_nombre),
+                    'tutor_nombre': tutor_nombre,
+                    'aprobados': aprobados,
+                    'rechazados': rechazados,
+                    'total_procesados': total_procesados,
+                    'aprobacion_porcentaje': aprobacion_porcentaje,
+                })
+            except Exception as e:
+                print(f"⚠️ Error procesando item de tutor (aprob/rech): {e}")
+                continue
+
+        return list(results)
+    except Exception as e:
+        import traceback
+        print(f"❌ Error en estadisticas_tutores: {str(e)}")
+        print(traceback.format_exc())
+        return []
+
+
+def estadisticas_tutores_por_titulacion(year=None, carrera_id=None) -> list[dict]:
+    """Conserva la lógica histórica: devuelve titulados y tiempo promedio por tutor."""
     try:
         queryset = Postulacion.objects.filter(estado_general='TITULADO').exclude(tutor__isnull=True).exclude(tutor='')
 
@@ -683,7 +746,6 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
         if year:
             try:
                 year_int = int(year)
-                # Filtrar por año de titulación (estimado por la última revisión de documento)
                 queryset = queryset.annotate(
                     fecha_fin_filter=Coalesce(Max('documentos__fecha_revision'), Now())
                 ).filter(fecha_fin_filter__year=year_int)
@@ -709,19 +771,17 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
         results = []
         for item in stats:
             try:
-                # Validación segura de campos
                 tutor_nombre = (item.get('tutor') or '').strip()
                 total_titulados = int(item.get('total_titulados') or 0)
                 tiempo_promedio = item.get('tiempo_promedio')
-                
-                # Cálculo seguro de días
+
                 tiempo_dias = 0.0
                 if tiempo_promedio is not None:
                     try:
                         tiempo_dias = round(tiempo_promedio.total_seconds() / 86400, 2)
                     except (AttributeError, TypeError):
                         tiempo_dias = 0.0
-                
+
                 results.append({
                     'tutor_id': _tutor_hash(tutor_nombre),
                     'nombre': tutor_nombre,
@@ -729,14 +789,13 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
                     'tiempo_promedio_dias': tiempo_dias
                 })
             except Exception as e:
-                print(f"⚠️ Error procesando item de tutor: {e}")
+                print(f"⚠️ Error procesando item de tutor (titulacion): {e}")
                 continue
-        
+
         return results
-    
     except Exception as e:
         import traceback
-        print(f"❌ Error en estadisticas_tutores: {str(e)}")
+        print(f"❌ Error en estadisticas_tutores_por_titulacion: {str(e)}")
         print(traceback.format_exc())
         return []
 
@@ -892,7 +951,7 @@ def generar_excel_tutores(data: list[dict]) -> HttpResponse:
     ws.title = "Rendimiento Tutores"
 
     # Encabezados
-    headers = ["ID", "Nombre", "Total Titulados", "Tiempo Promedio (Días)"]
+    headers = ["Tutor", "Aprobados", "Rechazados", "Total", "% Aprobación"]
     ws.append(headers)
 
     # Estilo de encabezados
@@ -907,14 +966,22 @@ def generar_excel_tutores(data: list[dict]) -> HttpResponse:
     # Datos
     for item in data:
         try:
+            tutor_nombre = item.get('tutor_nombre') or item.get('nombre') or ''
+            aprobados = int(item.get('aprobados') or 0)
+            rechazados = int(item.get('rechazados') or 0)
+            total = int(item.get('total_procesados') or (aprobados + rechazados))
+            porcentaje = item.get('aprobacion_porcentaje')
+            porcentaje_display = f"{round(float(porcentaje), 1)}%" if porcentaje is not None else "0%"
+
             ws.append([
-                item.get('tutor_id', ''),
-                item.get('nombre', ''),
-                item.get('total_titulados', 0),
-                item.get('tiempo_promedio_dias', 0)
+                tutor_nombre,
+                aprobados,
+                rechazados,
+                total,
+                porcentaje_display
             ])
         except (KeyError, TypeError, ValueError) as e:
-            print(f"⚠️ Error procesando item de tutor: {e}")
+            print(f"⚠️ Error procesando item de tutor para Excel: {e}")
             continue
 
     # Ajustar ancho de columnas
