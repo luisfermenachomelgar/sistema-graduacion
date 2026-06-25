@@ -153,9 +153,10 @@ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
         # Métrica 2: Promedio Procesamiento (días)
         promedio_procesamiento_dias = 0.0
         try:
-            # Buscar postulaciones completadas (TITULADO o APROBADO)
+            # Buscar postulaciones completadas (TITULADO)
+            # Nota: APROBADO no existe en BD (0 registros), se elimina del filtro
             postulaciones_completadas = Postulacion.objects.filter(
-                estado_general__in=['TITULADO', 'APROBADO']
+                estado_general='TITULADO'
             ).annotate(
                 dias_proceso=ExpressionWrapper(
                     Now() - F('fecha_postulacion'),

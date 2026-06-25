@@ -7,6 +7,8 @@ from modalidades.models import Etapa
 
 from .models import Postulacion
 
+ACTA_DEFENSA_TIPO_DOCUMENTO_ID = 8
+
 
 ESTADO_GENERAL_BY_ORDEN = {
     1: 'EN_PROCESO',
@@ -54,7 +56,7 @@ def required_documents_missing(postulacion: Postulacion) -> list[dict]:
 def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
     postulacion = (
         Postulacion.objects.select_for_update()
-        .select_related('modalidad', 'etapa_actual')
+        .select_related('modalidad')
         .get(pk=postulacion_id)
     )
     etapa_anterior = postulacion.etapa_actual
@@ -84,6 +86,19 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
         .order_by('orden')
         .first()
     )
+
+    if next_stage is None:
+        has_acta_defensa = DocumentoPostulacion.objects.filter(
+            postulacion_id=postulacion.id,
+            tipo_documento_id=ACTA_DEFENSA_TIPO_DOCUMENTO_ID,
+            estado='aprobado',
+        ).exists()
+        if not has_acta_defensa:
+            raise EtapaIncompletaError(
+                {
+                    'detail': 'No se puede avanzar a TITULADO. Falta el Acta de Defensa de Tesis o de Modalidad de Graduación aprobada.',
+                }
+            )
 
     if next_stage:
         postulacion.etapa_actual = next_stage

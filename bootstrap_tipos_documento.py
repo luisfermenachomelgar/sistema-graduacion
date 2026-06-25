@@ -12,6 +12,9 @@ django.setup()
 
 from documentos.models import TipoDocumento
 
+OLD_ACTA_DEFENSA_NAME = 'Comprobante de Defensa'
+NEW_ACTA_DEFENSA_NAME = 'Acta de Defensa de Tesis o de Modalidad de Graduación'
+
 # Crear tipos básicos sin relacionar a etapas/modalidades
 tipos = [
     {'nombre': 'Propuesta de Tesis', 'descripcion': 'Documento inicial de propuesta'},
@@ -21,12 +24,32 @@ tipos = [
     {'nombre': 'Perfil de Tesis', 'descripcion': 'Perfil detallado del trabajo'},
     {'nombre': 'Documento de Avance', 'descripcion': 'Documento que muestra el avance del trabajo'},
     {'nombre': 'Documento Final', 'descripcion': 'Documento final/conclusión del trabajo'},
-    {'nombre': 'Comprobante de Defensa', 'descripcion': 'Comprobante de defensa realizada'},
+    {'nombre': NEW_ACTA_DEFENSA_NAME, 'descripcion': 'Comprobante de defensa realizada'},
 ]
 
 print("\n" + "="*70)
 print("CREANDO TIPOS DE DOCUMENTO")
 print("="*70)
+
+def rename_existing_acta_defensa():
+    old = TipoDocumento.objects.filter(nombre=OLD_ACTA_DEFENSA_NAME).first()
+    if not old:
+        return
+
+    existing_new = TipoDocumento.objects.filter(nombre=NEW_ACTA_DEFENSA_NAME).first()
+    if existing_new and existing_new.id != old.id:
+        print(
+            f"Advertencia: existe '{OLD_ACTA_DEFENSA_NAME}' (id={old.id}) y "
+            f"'{NEW_ACTA_DEFENSA_NAME}' (id={existing_new.id}); no se renombra automáticamente."
+        )
+        return
+
+    old.nombre = NEW_ACTA_DEFENSA_NAME
+    old.save(update_fields=['nombre'])
+    print(f"Renombrado: '{OLD_ACTA_DEFENSA_NAME}' -> '{NEW_ACTA_DEFENSA_NAME}' (id={old.id})")
+
+
+rename_existing_acta_defensa()
 
 for tipo_data in tipos:
     obj, created = TipoDocumento.objects.get_or_create(
