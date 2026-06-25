@@ -209,6 +209,26 @@ const Postulaciones = () => {
     }
   };
 
+  const handleAvanzarEtapa = async (postulacion) => {
+    setError('');
+    setSuccess('');
+
+    try {
+      const result = await api.create(API_CONFIG.ENDPOINTS.POSTULACION_AVANZAR_ETAPA(postulacion.id));
+      if (result.success) {
+        setSuccess('Postulación avanzada exitosamente');
+        await refresh({
+          errorMessage: 'Error al cargar postulaciones',
+          exceptionMessage: 'Error loading postulaciones',
+        });
+      } else {
+        setError(result.error || 'Error al avanzar la etapa');
+      }
+    } catch (err) {
+      setError('Error al avanzar la etapa');
+    }
+  };
+
   const getEstadoBadge = (estado) => {
     const colors = {
       borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -263,6 +283,19 @@ const Postulaciones = () => {
       key: 'estado_general',
       label: 'Estado General',
       render: (value) => value || '-',
+    },
+    {
+      key: 'acciones_avance',
+      label: 'Acción',
+      render: (_, row) => (
+        <button
+          type="button"
+          onClick={() => handleAvanzarEtapa(row)}
+          className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800 transition text-xs font-medium"
+        >
+          Avanzar Etapa
+        </button>
+      ),
     },
   ];
 
