@@ -6,7 +6,7 @@
 // Detect environment
 const isDevelopment = import.meta.env.DEV;
 
-// Base URL configuration
+// Base URL configuration for API requests
 let baseUrl;
 if (isDevelopment) {
   // During development, use relative paths
@@ -18,9 +18,24 @@ if (isDevelopment) {
   baseUrl = import.meta.env.VITE_API_URL || 'http://localhost';
 }
 
+// Public server URL for accessing non-API resources (e.g., /media files)
+// Must always be a full URL (http://host:port)
+let publicServerUrl;
+if (isDevelopment) {
+  // In development, media files are served through nginx on port 80
+  publicServerUrl = 'http://localhost';
+} else {
+  // In production, extract host from API URL and remove /api suffix
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost';
+  publicServerUrl = apiUrl.replace(/\/api\/?$/, '') || 'http://localhost';
+}
+
 export const API_CONFIG = {
-  // Backend URL - Adjust based on environment
+  // Backend URL for API requests - Adjust based on environment
   BASE_URL: baseUrl,
+  
+  // Public server URL for accessing resources like /media files
+  PUBLIC_SERVER_URL: publicServerUrl,
   
   // Endpoints
   ENDPOINTS: {

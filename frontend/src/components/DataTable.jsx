@@ -153,7 +153,12 @@ const DataTable = ({
                       <div className="flex items-center gap-2">
                         {onView && (
                           <button
-                            onClick={() => onView(row)}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onView(row);
+                            }}
                             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
                             title="Ver"
                           >
@@ -162,7 +167,12 @@ const DataTable = ({
                         )}
                         {onEdit && (
                           <button
-                            onClick={() => onEdit(row)}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onEdit(row);
+                            }}
                             className="rounded-lg p-2 text-amber-600 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20"
                             title="Editar"
                           >
@@ -171,7 +181,12 @@ const DataTable = ({
                         )}
                         {onDelete && (
                           <button
-                            onClick={() => onDelete(row)}
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onDelete(row);
+                            }}
                             className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                             title="Eliminar"
                           >

@@ -14,7 +14,7 @@ import Alert from '../components/Alert';
 import { PageHeader, SectionCard } from '../components';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle, X } from 'lucide-react';
 
 const INITIAL_FORM_DATA = {
   postulacion: '',
@@ -59,6 +59,12 @@ const Documentos = () => {
   const [tiposDocumentoPorModalidad, setTiposDocumentoPorModalidad] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [archivoFile, setArchivoFile] = useState(null);
+  
+  // Modal de preview para visualizar PDFs
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewDocumento, setPreviewDocumento] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
     INITIAL_FORM_DATA
   );
@@ -283,6 +289,25 @@ const Documentos = () => {
     }
   };
 
+  const handleView = (documento) => {
+    const archivoUrl = documento?.archivo_url;
+    if (!archivoUrl) return;
+
+    // Construir URL completa del archivo usando PUBLIC_SERVER_URL
+    const urlCompleta = new URL(archivoUrl, API_CONFIG.PUBLIC_SERVER_URL).toString();
+    
+    // Abrir en modal de preview
+    setPreviewDocumento(documento);
+    setPreviewUrl(urlCompleta);
+    setIsPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewDocumento(null);
+    setPreviewUrl('');
+  };
+
   const getEstadoBadge = (estado) => {
     const colors = {
       pendiente: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -392,6 +417,7 @@ const Documentos = () => {
             data={documentos || []}
             columns={columns}
             pageSize={10}
+            onView={!isStudent ? handleView : undefined}
             onEdit={!isStudent ? (row) => {
               setArchivoFile(null);
               openModal(row);
@@ -492,6 +518,51 @@ const Documentos = () => {
             </SectionCard>
           </div>
         </Modal>
+
+        {/* Modal de Preview de PDF */}
+        {isPreviewOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="relative w-full max-w-5xl rounded-3xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Vista previa: {previewDocumento?.tipo_documento_nombre || 'Documento'}
+                </h2>
+                <button
+                  onClick={closePreview}
+                  className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="relative overflow-hidden rounded-b-3xl border-t border-gray-200 dark:border-gray-700">
+                {previewUrl ? (
+                  <iframe
+                    title="Vista previa del documento"
+                    src={previewUrl}
+                    className="h-[72vh] w-full bg-neutral-100 dark:bg-neutral-950"
+                  />
+                ) : (
+                  <div className="flex h-96 items-center justify-center">
+                    <p className="text-gray-500 dark:text-gray-400">Cargando documento...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+                <button
+                  onClick={closePreview}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
