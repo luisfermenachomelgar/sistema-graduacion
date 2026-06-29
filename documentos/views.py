@@ -95,7 +95,6 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
             
             if instancia.estado == 'rechazado':
                 self.enviar_notificacion_rechazo(instancia)
-
     def enviar_notificacion_rechazo(self, documento):
         """
         Envía un correo al estudiante notificando que su documento fue rechazado.

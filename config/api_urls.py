@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from documentos.views import DocumentoPostulacionViewSet, TipoDocumentoViewSet
 from modalidades.views import EtapaViewSet, ModalidadViewSet
-from postulantes.views import PostulacionViewSet, PostulanteViewSet
+from postulantes.views import NotificacionViewSet, PostulacionViewSet, PostulanteViewSet
 from reportes.views import DashboardGeneralView, DetalleAlumnosTutorView, EstadisticasTutoresView, ExportarEstadisticasTutoresView, ReporteEficienciaCarrerasView, HealthCheckView, DashboardChartDataView  # FASE 4: Health check
 from usuarios.views import LoginView, CustomUserViewSet
 
@@ -15,6 +15,7 @@ router.register(r'modalidades', ModalidadViewSet, basename='modalidad')
 router.register(r'etapas', EtapaViewSet, basename='etapa')
 router.register(r'postulantes', PostulanteViewSet, basename='postulante')
 router.register(r'postulaciones', PostulacionViewSet, basename='postulacion')
+router.register(r'notificaciones', NotificacionViewSet, basename='notificacion')
 router.register(r'documentos', DocumentoPostulacionViewSet, basename='documento')
 router.register(r'tipos-documento', TipoDocumentoViewSet, basename='tipo-documento')
 router.register(r'usuarios', CustomUserViewSet, basename='usuario')

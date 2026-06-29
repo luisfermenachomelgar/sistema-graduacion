@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, User, LogOut, Settings, Moon, Sun, HelpCircle } from 'lucide-react';
+import { Search, User, LogOut, Settings, Moon, Sun, HelpCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Modal from './Modal';
 import HelpCenter from './HelpCenter';
+import NotificationBell from './NotificationBell';
 
 const Header = ({ user, onLogout }) => {
   // Paleta corporativa (reutiliza exactamente la del Sidebar)
@@ -18,28 +19,14 @@ const Header = ({ user, onLogout }) => {
 
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   
-  const notificationsRef = useRef(null);
-  const notificationsButtonRef = useRef(null);
   const userMenuRef = useRef(null)
   const userMenuButtonRef = useRef(null)
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Cerrar notificaciones si hace clic fuera
-      if (
-        notificationsRef.current &&
-        notificationsButtonRef.current &&
-        !notificationsRef.current.contains(event.target) &&
-        !notificationsButtonRef.current.contains(event.target)
-      ) {
-        setShowNotifications(false)
-      }
-
-      // Cerrar menú de usuario si hace clic fuera
       if (
         userMenuRef.current &&
         userMenuButtonRef.current &&
@@ -161,44 +148,7 @@ const Header = ({ user, onLogout }) => {
             </button>
 
             {/* Notificaciones */}
-            <div className="relative">
-              <button
-                ref={notificationsButtonRef}
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative header-action p-2 rounded-lg"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: BRAND_AZURE }}></span>
-              </button>
-
-              {showNotifications && (
-                <div 
-                  ref={notificationsRef}
-                  className="header-dropdown absolute right-0 mt-2 w-80 rounded-xl shadow-lg border overflow-hidden"
-                  style={{ borderColor: DIVIDER, backgroundColor: BRAND_DEEP }}
-                >
-                  <div className="p-4 border-b" style={{ borderColor: DIVIDER, color: TEXT_ON_DARK }}>
-                    <h3 className="font-semibold">Notificaciones</h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="p-4 border-b transition-colors cursor-pointer header-dropdown-item"
-                        style={{ borderColor: DIVIDER }}
-                      >
-                        <p className="text-sm font-medium header-dropdown-text">
-                          Documento pendiente de revisión
-                        </p>
-                        <p className="text-xs mt-1 header-dropdown-meta">
-                          Hace 2 horas
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
 
             {/* Perfil Usuario */}
             <div className="relative">
