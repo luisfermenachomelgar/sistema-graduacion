@@ -73,7 +73,7 @@ const AppRouter = () => {
         <Route
           path="/modalidades"
           element={
-            <ProtectedRoute requiredRole={['admin', 'administ']}>
+            <ProtectedRoute requiredRole={['admin', 'administ', 'estudiante']}>
               <AdminLayout>
                 <Modalidades />
               </AdminLayout>

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '../constants/api';
 import { useCrud } from '../hooks/useCrud';
+import useAuth from '../hooks/useAuth';
 import Modal from '../components/Modal';
 import Alert from '../components/Alert';
 import FormField from '../components/FormField';
@@ -15,6 +16,10 @@ import { ArrowRight, Plus, PencilLine, Trash2 } from 'lucide-react';
 
 const Modalidades = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const effectiveRole = user?.role || (user?.is_superuser ? 'admin' : null);
+  const canManage = ['admin', 'administ'].includes(effectiveRole);
+
   const {
     data: modalidades,
     loading,
@@ -132,15 +137,17 @@ const Modalidades = () => {
       <PageHeader
         title="Modalidades"
         description="Gestiona las modalidades de graduación del sistema"
-        action={(
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow transition hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5" />
-            Nueva Modalidad
-          </button>
-        )}
+        action={
+          canManage && (
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 font-medium text-white shadow transition hover:bg-blue-700"
+            >
+              <Plus className="h-5 w-5" />
+              Nueva Modalidad
+            </button>
+          )
+        }
       />
 
       {error && <Alert type="error" message={error} autoClose={false} />}
@@ -188,21 +195,25 @@ const Modalidades = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => openModal(modalidad)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/15 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:border-blue-500/25 hover:bg-blue-500/15 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 dark:border-blue-400/15 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 dark:hover:text-blue-200"
-                      >
-                        <PencilLine className="h-4 w-4" />
-                        Editar
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => openModal(modalidad)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-blue-500/15 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:border-blue-500/25 hover:bg-blue-500/15 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 dark:border-blue-400/15 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 dark:hover:text-blue-200"
+                        >
+                          <PencilLine className="h-4 w-4" />
+                          Editar
+                        </button>
+                      )}
 
-                      <button
-                        onClick={() => handleDelete(modalidad.id)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-rose-500/15 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-500/25 hover:bg-rose-500/15 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-200"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Eliminar
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => handleDelete(modalidad.id)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-rose-500/15 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-500/25 hover:bg-rose-500/15 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-200"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

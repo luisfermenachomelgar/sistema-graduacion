@@ -31,7 +31,7 @@ const Sidebar = () => {
       label: 'Postulantes',
       href: '/postulantes',
       badge: null,
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'administ'],
     },
     {
       icon: Clipboard,
@@ -51,7 +51,7 @@ const Sidebar = () => {
       label: 'Modalidades',
       href: '/modalidades',
       badge: null,
-      roles: ['admin', 'administ'],
+      roles: ['admin', 'administ', 'estudiante'],
     },
     {
       icon: Shield,

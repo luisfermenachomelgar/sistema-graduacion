@@ -288,13 +288,15 @@ const Postulaciones = () => {
       key: 'acciones_avance',
       label: 'Acción',
       render: (_, row) => (
-        <button
-          type="button"
-          onClick={() => handleAvanzarEtapa(row)}
-          className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800 transition text-xs font-medium"
-        >
-          Avanzar Etapa
-        </button>
+        !isStudent && (
+          <button
+            type="button"
+            onClick={() => handleAvanzarEtapa(row)}
+            className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800 transition text-xs font-medium"
+          >
+            Avanzar Etapa
+          </button>
+        )
       ),
     },
   ];

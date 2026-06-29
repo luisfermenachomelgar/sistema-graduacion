@@ -23,7 +23,7 @@ const Sidebar = () => {
       label: 'Postulantes',
       href: '/postulantes',
       icon: '👥',
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'administ'],
     },
     {
       label: 'Postulaciones',
@@ -41,7 +41,7 @@ const Sidebar = () => {
       label: 'Modalidades',
       href: '/modalidades',
       icon: '🎓',
-      roles: ['admin', 'administ'],
+      roles: ['admin', 'administ', 'estudiante'],
     },
     {
       label: 'Usuarios',

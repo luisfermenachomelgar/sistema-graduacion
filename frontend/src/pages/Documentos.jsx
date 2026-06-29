@@ -377,7 +377,7 @@ const Documentos = () => {
       <PageHeader
         title="Documentos"
         description="Administra los documentos de postulación"
-        action={!isStudent && (
+        action={(
           <button
             onClick={() => {
               setFormData(INITIAL_FORM_DATA);
@@ -470,15 +470,17 @@ const Documentos = () => {
                   className="md:col-span-1"
                 />
 
-                <FormField
-                  label="Estado"
-                  name="estado"
-                  type="select"
-                  value={formData.estado}
-                  onChange={handleInputChange}
-                  options={ESTADO_DOCUMENTO_OPTIONS}
-                  className="md:col-span-2"
-                />
+                {!isStudent && (
+                  <FormField
+                    label="Estado"
+                    name="estado"
+                    type="select"
+                    value={formData.estado}
+                    onChange={handleInputChange}
+                    options={ESTADO_DOCUMENTO_OPTIONS}
+                    className="md:col-span-2"
+                  />
+                )}
               </div>
             </SectionCard>
 
