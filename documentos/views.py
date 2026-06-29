@@ -15,7 +15,14 @@ from config.permissions import (
 )
 from postulantes.models import Notificacion
 from .models import DocumentoPostulacion, TipoDocumento
-from .serializers import DocumentoPostulacionSerializer, TipoDocumentoSerializer
+from .serializers import (
+    DocumentoPostulacionSerializer,
+    TipoDocumentoSerializer,
+    DocumentoPostulacionCreateSerializer,
+)
+from postulantes.models import Postulacion
+from rest_framework.response import Response
+from rest_framework import status
 
 
 # FASE 3: Custom Pagination with max_page_size limit
@@ -27,19 +34,106 @@ class CustomPagination(PageNumberPagination):
 
 class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
     queryset = DocumentoPostulacion.objects.select_related(
-        'postulacion__postulante__usuario',  # FASE 2B: Complete chain (N+1 fix)
-        'postulacion__modalidad',  # FASE 2C: Expose modalidad_nombre
+        'postulacion__postulante__usuario',
+        'postulacion__modalidad',
         'tipo_documento',
         'revisado_por',
     ).all()
     serializer_class = DocumentoPostulacionSerializer
-    pagination_class = CustomPagination  # FASE 3: Applied
+    pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['postulacion', 'estado', 'tipo_documento']
     search_fields = ['postulacion__postulante__usuario__username', 'tipo_documento__nombre']
     ordering_fields = ['fecha_subida', 'fecha_revision']
     ordering = ['-fecha_subida']
     permission_classes = [DocumentoRolePermission]
+
+    def create(self, request, *args, **kwargs):
+        """Crear o reutilizar documento existente para reenvío por estudiante."""
+        postulacion_id = request.data.get('postulacion')
+        tipo_documento_id = request.data.get('tipo_documento')
+        try:
+            postulacion_id = int(postulacion_id) if postulacion_id is not None else None
+        except Exception:
+            postulacion_id = None
+        try:
+            tipo_documento_id = int(tipo_documento_id) if tipo_documento_id is not None else None
+        except Exception:
+            tipo_documento_id = None
+
+        existente = None
+        if postulacion_id and tipo_documento_id:
+            existente = DocumentoPostulacion.objects.filter(
+                postulacion_id=postulacion_id, tipo_documento_id=tipo_documento_id
+            ).first()
+            matching = DocumentoPostulacion.objects.filter(
+                postulacion_id=postulacion_id, tipo_documento_id=tipo_documento_id
+            )
+            print(
+                'DEBUG_CREATE lookup',
+                'postulacion_id=', postulacion_id,
+                'tipo_documento_id=', tipo_documento_id,
+                'exists=', bool(existente),
+                'count=', matching.count(),
+                'ids=', list(matching.values_list('id', flat=True)),
+            )
+            if existente:
+                print('DEBUG_CREATE: existente id=', existente.id, 'estado=', existente.estado)
+
+        print('DEBUG_CREATE start', 'keys', list(request.data.keys()), 'FILES', list(request.FILES.keys()))
+        print('DEBUG_CREATE values', 'postulacion', request.data.get('postulacion'), 'tipo_documento', request.data.get('tipo_documento'))
+
+        user = request.user
+        is_privileged = bool(
+            user and (user.has_perm('documentos.change_documentopostulacion') or can_view_all_documentos(user))
+        )
+
+        if existente:
+            if not is_privileged:
+                if existente.estado != 'rechazado':
+                    raise ValidationError('Ya existe un documento para este tipo; no puede crear uno nuevo.')
+
+                archivo = request.FILES.get('archivo')
+                if not archivo:
+                    raise ValidationError('Para reenviar debe adjuntar el archivo.')
+
+                file_validator = DocumentoPostulacionCreateSerializer(
+                    instance=existente,
+                    data={'archivo': archivo},
+                    partial=True,
+                    context={'request': request}
+                )
+                file_validator.is_valid(raise_exception=True)
+
+                existente.archivo = archivo
+                existente.estado = 'pendiente'
+                existente.revisado_por = None
+                existente.fecha_revision = None
+                existente.comentario_revision = ''
+                existente.save(
+                    update_fields=['archivo', 'estado', 'revisado_por', 'fecha_revision', 'comentario_revision']
+                )
+
+                output = DocumentoPostulacionSerializer(existente, context={'request': request})
+                return Response(output.data, status=status.HTTP_200_OK)
+
+            archivo = request.FILES.get('archivo')
+            if archivo:
+                file_validator = DocumentoPostulacionCreateSerializer(
+                    data={'archivo': archivo}, partial=True, context={'request': request}
+                )
+                file_validator.is_valid(raise_exception=True)
+                existente.archivo = archivo
+                existente.save(update_fields=['archivo'])
+
+            output = DocumentoPostulacionSerializer(existente, context={'request': request})
+            return Response(output.data, status=status.HTTP_200_OK)
+
+        create_serializer = DocumentoPostulacionCreateSerializer(data=request.data, context={'request': request})
+        create_serializer.is_valid(raise_exception=True)
+        instancia = create_serializer.save()
+        output = DocumentoPostulacionSerializer(instancia, context={'request': request})
+        return Response(output.data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -92,22 +186,19 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
                     'tipo_documento_id': instancia.tipo_documento_id,
                 },
             )
-            
+
             if instancia.estado == 'rechazado':
                 self.enviar_notificacion_rechazo(instancia)
+
     def enviar_notificacion_rechazo(self, documento):
-        """
-        Envía un correo al estudiante notificando que su documento fue rechazado.
-        """
+        """Envía un correo al estudiante notificando que su documento fue rechazado."""
         try:
-            # Navegar relaciones para obtener datos del estudiante
             postulante = documento.postulacion.postulante
             usuario = postulante.usuario
 
             if not usuario:
                 return
-            
-            # Crear notificación en sistema
+
             Notificacion.objects.create(
                 usuario=usuario,
                 mensaje=f"Documento rechazado: {documento.tipo_documento.nombre}",
@@ -135,7 +226,6 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
                 fail_silently=True,
             )
         except Exception as e:
-            # Evitar que un error de correo rompa el flujo de la aplicación
             print(f"Error al enviar notificación de rechazo: {e}")
 
 

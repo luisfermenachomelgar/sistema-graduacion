@@ -1,3 +1,4 @@
+from django.db.models.deletion import ProtectedError
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Max
@@ -25,6 +26,20 @@ class ModalidadViewSet(viewsets.ModelViewSet):
         if self.action in {'create', 'update', 'partial_update', 'destroy'}:
             return [CRUDModelPermission()]
         return super().get_permissions()
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {
+                    'detail': (
+                        'No se puede eliminar la modalidad porque tiene registros asociados. '
+                        'Elimine primero etapas, tipos de documento, postulaciones u otros registros relacionados.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
     def _can_manage_requisitos(self, user):
         return bool(
