@@ -262,7 +262,6 @@ const Usuarios = () => {
                 disabled={!!formData.is_superuser}
                 options={[
                   { id: 'admin', label: 'Administrador' },
-                  { id: 'administ', label: 'Administrativo' },
                   { id: 'estudiante', label: 'Estudiante' },
                 ]}
                 required
