@@ -39,6 +39,7 @@ class ModalidadDetailSerializer(serializers.ModelSerializer):
 
 class ModalidadSerializer(serializers.ModelSerializer):
     """Serializer general para modalidades."""
+    
     class Meta:
         model = Modalidad
         fields = '__all__'
