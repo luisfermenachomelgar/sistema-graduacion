@@ -23,15 +23,14 @@ const INITIAL_FORM_DATA = {
   titulo_trabajo: '',
   anio_academico: new Date().getFullYear(),
   semestre_academico: '',
-  estado: 'borrador',
+  estado: 'en_revision',
   estado_general: 'EN_PROCESO',
   tutor: '',
   observaciones: '',
 };
 
 const ESTADO_OPTIONS = [
-  { label: 'Borrador', value: 'borrador' },
-  { label: 'En revision', value: 'en_revision' },
+  { label: 'Revisión', value: 'en_revision' },
   { label: 'Aprobada', value: 'aprobada' },
   { label: 'Rechazada', value: 'rechazada' },
 ];
