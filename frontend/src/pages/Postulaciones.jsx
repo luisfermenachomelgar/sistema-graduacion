@@ -478,7 +478,7 @@ const Postulaciones = () => {
               />
 
               <FormField
-                label="Semestre académico"
+                label="Periodo"
                 name="semestre_academico"
                 type="select"
                 value={formData.semestre_academico}
