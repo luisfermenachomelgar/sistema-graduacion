@@ -102,6 +102,7 @@ const ModalidadDetalle = () => {
   const { user } = useAuth();
   const effectiveRole = user?.role || (user?.is_superuser ? 'admin' : null);
   const canManage = ['admin', 'administ'].includes(effectiveRole);
+  const isStudent = effectiveRole === 'estudiante';
 
   const [modalidad, setModalidad] = useState(null);
   const [requirements, setRequirements] = useState([]);
@@ -468,94 +469,96 @@ const ModalidadDetalle = () => {
       {error && <Alert type="error" message={error} autoClose={false} />}
       {success && <Alert type="success" message={success} />}
 
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white shadow-2xl shadow-slate-950/20">
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)]">
-          <div className="p-6 sm:p-8 xl:p-10">
-            <div className="mb-5 flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold tracking-wide ${activeStateClass}`}>
-                <Sparkles className="h-3.5 w-3.5" />
-                {modalidad?.activa ? 'Modalidad activa' : 'Modalidad inactiva'}
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-medium text-white/85">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Creada {formatDateShort(modalidad?.creada_en)}
-              </span>
-            </div>
+      {!isStudent && (
+        <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white shadow-2xl shadow-slate-950/20">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)]">
+            <div className="p-6 sm:p-8 xl:p-10">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
+                <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold tracking-wide ${activeStateClass}`}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {modalidad?.activa ? 'Modalidad activa' : 'Modalidad inactiva'}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-medium text-white/85">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Creada {formatDateShort(modalidad?.creada_en)}
+                </span>
+              </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{modalidad?.nombre}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200 sm:text-base">
-              {modalidad?.descripcion || 'Sin descripción registrada para esta modalidad.'}
-            </p>
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{modalidad?.nombre}</h1>
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200 sm:text-base">
+                {modalidad?.descripcion || 'Sin descripción registrada para esta modalidad.'}
+              </p>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {summary.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{item.label}</p>
-                        <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
-                      </div>
-                      <div className="rounded-2xl bg-white/10 p-3 text-white">
-                        <Icon className="h-5 w-5" />
+              <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {summary.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{item.label}</p>
+                          <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white/10 p-3 text-white">
+                          <Icon className="h-5 w-5" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 bg-white/5 p-6 sm:p-8 xl:border-l xl:border-t-0 xl:p-10">
-            <div className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-xl shadow-slate-950/20 backdrop-blur-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Vista estudiante</p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">Portal de seguimiento</h2>
-                </div>
-                <div className="rounded-2xl bg-blue-500/20 p-3 text-blue-100 ring-1 ring-inset ring-blue-300/20">
-                  <FileText className="h-5 w-5" />
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-sm text-slate-200">
-                    <span>Avance documental</span>
-                    <span>{studentProgress}%</span>
+            <div className="border-t border-white/10 bg-white/5 p-6 sm:p-8 xl:border-l xl:border-t-0 xl:p-10">
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-xl shadow-slate-950/20 backdrop-blur-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Vista estudiante</p>
+                    <h2 className="mt-2 text-xl font-semibold text-white">Portal de seguimiento</h2>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10">
-                    <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 transition-all" style={{ width: `${studentProgress}%` }} />
+                  <div className="rounded-2xl bg-blue-500/20 p-3 text-blue-100 ring-1 ring-inset ring-blue-300/20">
+                    <FileText className="h-5 w-5" />
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                  <p className="text-sm font-medium text-white">Acceso limpio y claro</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    El estudiante ve los requisitos activos, archivos disponibles y el estado documental sin salir del portal.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Actualización</p>
-                    <p className="mt-2 text-sm font-medium text-white">{formatDate(modalidad?.actualizada_en || modalidad?.creada_en)}</p>
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm text-slate-200">
+                      <span>Avance documental</span>
+                      <span>{studentProgress}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/10">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 transition-all" style={{ width: `${studentProgress}%` }} />
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Estado</p>
-                    <p className="mt-2 text-sm font-medium text-white">
-                      {modalidad?.activa ? 'Disponible para postulantes' : 'Temporalmente deshabilitada'}
+
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                    <p className="text-sm font-medium text-white">Acceso limpio y claro</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-300">
+                      El estudiante ve los requisitos activos, archivos disponibles y el estado documental sin salir del portal.
                     </p>
                   </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Actualización</p>
+                      <p className="mt-2 text-sm font-medium text-white">{formatDate(modalidad?.actualizada_en || modalidad?.creada_en)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Estado</p>
+                      <p className="mt-2 text-sm font-medium text-white">
+                        {modalidad?.activa ? 'Disponible para postulantes' : 'Temporalmente deshabilitada'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
+      <div className={`grid gap-6 ${isStudent ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]'}`}>
         <div className="space-y-6">
           <SectionCard title="Requisitos oficiales" description="Lista editable de documentos y metadatos para la modalidad." className="bg-white dark:bg-gray-800">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -688,80 +691,82 @@ const ModalidadDetalle = () => {
           </SectionCard>
         </div>
 
-        <div className="space-y-6">
-          <SectionCard title="Seguimiento documental" description="Visión rápida para coordinación académica y estudiantes." className="bg-white dark:bg-gray-800">
-            <div className="space-y-4">
-              <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-500 p-5 text-white shadow-lg">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/80">Progreso</p>
-                    <p className="mt-2 text-3xl font-bold">{studentProgress}%</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/15 p-3">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                </div>
-                <div className="mt-5 h-2 rounded-full bg-white/20">
-                  <div className="h-2 rounded-full bg-white" style={{ width: `${studentProgress}%` }} />
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-blue-100 p-2 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                      <Layers3 className="h-5 w-5" />
-                    </div>
+        {!isStudent && (
+          <div className="space-y-6">
+            <SectionCard title="Seguimiento documental" description="Visión rápida para coordinación académica y estudiantes." className="bg-white dark:bg-gray-800">
+              <div className="space-y-4">
+                <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-500 p-5 text-white shadow-lg">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Documentos activos</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-                        {requirements.filter((requirement) => requirement.activo).length}
-                      </p>
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/80">Progreso</p>
+                      <p className="mt-2 text-3xl font-bold">{studentProgress}%</p>
                     </div>
+                    <div className="rounded-2xl bg-white/15 p-3">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                  </div>
+                  <div className="mt-5 h-2 rounded-full bg-white/20">
+                    <div className="h-2 rounded-full bg-white" style={{ width: `${studentProgress}%` }} />
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Con archivo</p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-                        {requirements.filter((requirement) => requirement.archivo_url).length}
-                      </p>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-blue-100 p-2 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                        <Layers3 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Documentos activos</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                          {requirements.filter((requirement) => requirement.activo).length}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60 sm:col-span-2 xl:col-span-1">
-                  <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Fecha de creación</p>
-                  <p className="mt-2 text-base font-semibold text-gray-900 dark:text-white">{formatDate(modalidad?.creada_en)}</p>
+                  <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Con archivo</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                          {requirements.filter((requirement) => requirement.archivo_url).length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-gray-200/80 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60 sm:col-span-2 xl:col-span-1">
+                    <p className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Fecha de creación</p>
+                    <p className="mt-2 text-base font-semibold text-gray-900 dark:text-white">{formatDate(modalidad?.creada_en)}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
 
-          <SectionCard title="Estado institucional" description="Tarjeta de contexto para la vista de estudiantes." className="bg-white dark:bg-gray-800">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Modalidad</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{modalidad?.nombre}</span>
+            <SectionCard title="Estado institucional" description="Tarjeta de contexto para la vista de estudiantes." className="bg-white dark:bg-gray-800">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Modalidad</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{modalidad?.nombre}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Estado</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${modalidad?.activa ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
+                    {modalidad?.activa ? 'Activa' : 'Inactiva'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Actualización</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(modalidad?.actualizada_en || modalidad?.creada_en)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Estado</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${modalidad?.activa ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
-                  {modalidad?.activa ? 'Activa' : 'Inactiva'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/60">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Actualización</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(modalidad?.actualizada_en || modalidad?.creada_en)}</span>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
+            </SectionCard>
+          </div>
+        )}
       </div>
 
       <Modal

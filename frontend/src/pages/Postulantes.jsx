@@ -362,7 +362,7 @@ const Postulantes = () => {
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
                 <FormField
-                  label="Código de Estudiante"
+                  label="RU"
                   name="codigo_estudiante"
                   type="text"
                   value={formData.codigo_estudiante}
