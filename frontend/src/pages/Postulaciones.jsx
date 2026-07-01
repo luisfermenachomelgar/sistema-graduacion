@@ -21,7 +21,7 @@ const INITIAL_FORM_DATA = {
   postulante_id: '',
   modalidad: '',
   titulo_trabajo: '',
-  anio_academico: '',
+  anio_academico: new Date().getFullYear(),
   semestre_academico: '',
   estado: 'borrador',
   estado_general: 'EN_PROCESO',
@@ -43,6 +43,12 @@ const ESTADO_GENERAL_OPTIONS = [
   { label: 'Publica aprobada', value: 'PUBLICA_APROBADA' },
   { label: 'Titulado', value: 'TITULADO' },
 ];
+
+const currentYear = new Date().getFullYear();
+const ACADEMIC_YEAR_OPTIONS = Array.from({ length: currentYear - 1990 + 1 }, (_, index) => ({
+  id: 1990 + index,
+  label: String(1990 + index),
+}));
 
 const Postulaciones = () => {
   const {
@@ -468,12 +474,12 @@ const Postulaciones = () => {
               />
 
               <FormField
-                label="Año académico"
+                label="Gestión"
                 name="anio_academico"
-                type="number"
+                type="select"
                 value={formData.anio_academico}
                 onChange={handleInputChange}
-                placeholder="2026"
+                options={ACADEMIC_YEAR_OPTIONS}
                 required
               />
 
