@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: http://localhost
+        VITE_API_URL: ${VITE_API_URL:-http://localhost}
     container_name: sistema_frontend
     restart: unless-stopped
     depends_on:
