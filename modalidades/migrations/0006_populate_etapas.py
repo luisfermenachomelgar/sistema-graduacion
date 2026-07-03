@@ -27,24 +27,28 @@ def create_etapas(apps, schema_editor):
     # 1. PROYECTO DE GRADO (ID: 3) - 4 etapas
     # ========================================================================
     print("\n📌 Insertando etapas para Proyecto de Grado...")
-    proyecto = Modalidad.objects.get(nombre='Proyecto de Grado')
-    
-    etapas_proyecto = [
-        {'orden': 1, 'nombre': 'Propuesta/Perfil'},
-        {'orden': 2, 'nombre': 'Desarrollo del Proyecto'},
-        {'orden': 3, 'nombre': 'Defensa de Proyecto'},
-        {'orden': 4, 'nombre': 'Correcciones'},
-    ]
-    
-    for etapa_data in etapas_proyecto:
-        etapa, created = Etapa.objects.get_or_create(
-            modalidad=proyecto,
-            orden=etapa_data['orden'],
-            defaults={
-                'nombre': etapa_data['nombre'],
-                'activo': True,
-            }
-        )
+    proyecto = Modalidad.objects.filter(nombre='Proyecto de Grado').first()
+    if proyecto is None:
+        print("⚠️ Modalidad 'Proyecto de Grado' no encontrada, omitiendo etapas.")
+    else:
+        etapas_proyecto = [
+            {'orden': 1, 'nombre': 'Propuesta/Perfil'},
+            {'orden': 2, 'nombre': 'Desarrollo del Proyecto'},
+            {'orden': 3, 'nombre': 'Defensa de Proyecto'},
+            {'orden': 4, 'nombre': 'Correcciones'},
+        ]
+        
+        for etapa_data in etapas_proyecto:
+            etapa, created = Etapa.objects.get_or_create(
+                modalidad=proyecto,
+                orden=etapa_data['orden'],
+                defaults={
+                    'nombre': etapa_data['nombre'],
+                    'activo': True,
+                }
+            )
+            status = "✓ CREADA" if created else "✓ EXISTE"
+            print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
         status = "✓ CREADA" if created else "✓ EXISTE"
         print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
     
@@ -52,23 +56,27 @@ def create_etapas(apps, schema_editor):
     # 2. EXAMEN DE GRADO (ID: 5) - 3 etapas
     # ========================================================================
     print("\n📌 Insertando etapas para Examen de Grado...")
-    examen = Modalidad.objects.get(nombre='Examen de Grado')
-    
-    etapas_examen = [
-        {'orden': 1, 'nombre': 'Inscripción'},
-        {'orden': 2, 'nombre': 'Evaluación'},
-        {'orden': 3, 'nombre': 'Resultado Final'},
-    ]
-    
-    for etapa_data in etapas_examen:
-        etapa, created = Etapa.objects.get_or_create(
-            modalidad=examen,
-            orden=etapa_data['orden'],
-            defaults={
-                'nombre': etapa_data['nombre'],
-                'activo': True,
-            }
-        )
+    examen = Modalidad.objects.filter(nombre='Examen de Grado').first()
+    if examen is None:
+        print("⚠️ Modalidad 'Examen de Grado' no encontrada, omitiendo etapas.")
+    else:
+        etapas_examen = [
+            {'orden': 1, 'nombre': 'Inscripción'},
+            {'orden': 2, 'nombre': 'Evaluación'},
+            {'orden': 3, 'nombre': 'Resultado Final'},
+        ]
+        
+        for etapa_data in etapas_examen:
+            etapa, created = Etapa.objects.get_or_create(
+                modalidad=examen,
+                orden=etapa_data['orden'],
+                defaults={
+                    'nombre': etapa_data['nombre'],
+                    'activo': True,
+                }
+            )
+            status = "✓ CREADA" if created else "✓ EXISTE"
+            print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
         status = "✓ CREADA" if created else "✓ EXISTE"
         print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
     
@@ -76,24 +84,28 @@ def create_etapas(apps, schema_editor):
     # 3. VÍA DIPLOMADO (ID: 4) - 4 etapas
     # ========================================================================
     print("\n📌 Insertando etapas para Vía Diplomado...")
-    diplomado = Modalidad.objects.get(nombre='Vía Diplomado')
-    
-    etapas_diplomado = [
-        {'orden': 1, 'nombre': 'Inscripción Diplomado'},
-        {'orden': 2, 'nombre': 'Desarrollo Diplomado'},
-        {'orden': 3, 'nombre': 'Defensa Monografía'},
-        {'orden': 4, 'nombre': 'Correcciones'},
-    ]
-    
-    for etapa_data in etapas_diplomado:
-        etapa, created = Etapa.objects.get_or_create(
-            modalidad=diplomado,
-            orden=etapa_data['orden'],
-            defaults={
-                'nombre': etapa_data['nombre'],
-                'activo': True,
-            }
-        )
+    diplomado = Modalidad.objects.filter(nombre='Vía Diplomado').first()
+    if diplomado is None:
+        print("⚠️ Modalidad 'Vía Diplomado' no encontrada, omitiendo etapas.")
+    else:
+        etapas_diplomado = [
+            {'orden': 1, 'nombre': 'Inscripción Diplomado'},
+            {'orden': 2, 'nombre': 'Desarrollo Diplomado'},
+            {'orden': 3, 'nombre': 'Defensa Monografía'},
+            {'orden': 4, 'nombre': 'Correcciones'},
+        ]
+        
+        for etapa_data in etapas_diplomado:
+            etapa, created = Etapa.objects.get_or_create(
+                modalidad=diplomado,
+                orden=etapa_data['orden'],
+                defaults={
+                    'nombre': etapa_data['nombre'],
+                    'activo': True,
+                }
+            )
+            status = "✓ CREADA" if created else "✓ EXISTE"
+            print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
         status = "✓ CREADA" if created else "✓ EXISTE"
         print(f"  {status}: Orden {etapa_data['orden']} - {etapa_data['nombre']}")
     

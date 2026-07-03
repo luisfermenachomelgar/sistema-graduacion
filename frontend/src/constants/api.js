@@ -53,7 +53,9 @@ export const API_CONFIG = {
     POSTULACION_AVANZAR_ETAPA: (id) => `/api/postulaciones/${id}/avanzar-etapa/`,
     POSTULACION_HISTORIAL: (id) => `/api/postulaciones/${id}/historial/`,
     
-    // Documentos (Documents)
+    // Reportes (Reports)
+    REPORTE_POSTULACIONES: '/api/reportes/postulaciones/',
+    DASHBOARD_GENERAL: '/api/reportes/dashboard-general/',
     DOCUMENTOS: '/api/documentos/',
     DOCUMENTO_DETAIL: (id) => `/api/documentos/${id}/`,
     TIPOS_DOCUMENTO: '/api/tipos-documento/',

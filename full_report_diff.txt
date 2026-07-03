@@ -1,0 +1,665 @@
+﻿diff --git a/config/api_urls.py b/config/api_urls.py
+index 117b1df..905ff0b 100644
+--- a/config/api_urls.py
++++ b/config/api_urls.py
+@@ -6,7 +6,16 @@ from rest_framework_simplejwt.views import TokenRefreshView
+ from documentos.views import DocumentoPostulacionViewSet, TipoDocumentoViewSet
+ from modalidades.views import EtapaViewSet, ModalidadViewSet
+ from postulantes.views import NotificacionViewSet, PostulacionViewSet, PostulanteViewSet
+-from reportes.views import DashboardGeneralView, DetalleAlumnosTutorView, EstadisticasTutoresView, ExportarEstadisticasTutoresView, ReporteEficienciaCarrerasView, HealthCheckView, DashboardChartDataView  # FASE 4: Health check
++from reportes.views import (
++    DashboardGeneralView,
++    DetalleAlumnosTutorView,
++    EstadisticasTutoresView,
++    ExportarEstadisticasTutoresView,
++    ReporteEficienciaCarrerasView,
++    HealthCheckView,
++    DashboardChartDataView,
++    ReporteGeneralPostulacionesView,
++)  # FASE 4: Health check
+ from usuarios.views import LoginView, CustomUserViewSet
+ 
+ router = DefaultRouter()
+@@ -26,6 +35,7 @@ urlpatterns = [
+     path('health/', HealthCheckView.as_view(), name='health_check'),  # FASE 4: Health check (sin autenticaci├│n)
+     path('reportes/dashboard-general/', DashboardGeneralView.as_view(), name='dashboard_general'),
+     path('reportes/dashboard-chart-data/', DashboardChartDataView.as_view(), name='dashboard_chart_data'),
++    path('reportes/postulaciones/', ReporteGeneralPostulacionesView.as_view(), name='reporte_general_postulaciones'),
+     path('reportes/estadisticas-tutores/', EstadisticasTutoresView.as_view(), name='estadisticas_tutores'),
+     path('reportes/estadisticas-tutores/exportar/', ExportarEstadisticasTutoresView.as_view(), name='exportar_estadisticas_tutores'),
+     path('reportes/estadisticas-tutores/<int:tutor_id>/alumnos/', DetalleAlumnosTutorView.as_view(), name='detalle_alumnos_tutor'),
+diff --git a/frontend/src/constants/api.js b/frontend/src/constants/api.js
+index 8a8649f..de9f73b 100644
+--- a/frontend/src/constants/api.js
++++ b/frontend/src/constants/api.js
+@@ -53,7 +53,9 @@ export const API_CONFIG = {
+     POSTULACION_AVANZAR_ETAPA: (id) => `/api/postulaciones/${id}/avanzar-etapa/`,
+     POSTULACION_HISTORIAL: (id) => `/api/postulaciones/${id}/historial/`,
+     
+-    // Documentos (Documents)
++    // Reportes (Reports)
++    REPORTE_POSTULACIONES: '/api/reportes/postulaciones/',
++    DASHBOARD_GENERAL: '/api/reportes/dashboard-general/',
+     DOCUMENTOS: '/api/documentos/',
+     DOCUMENTO_DETAIL: (id) => `/api/documentos/${id}/`,
+     TIPOS_DOCUMENTO: '/api/tipos-documento/',
+diff --git a/frontend/src/pages/Reportes.jsx b/frontend/src/pages/Reportes.jsx
+index 5add9bd..4a7c707 100644
+--- a/frontend/src/pages/Reportes.jsx
++++ b/frontend/src/pages/Reportes.jsx
+@@ -3,24 +3,154 @@
+  * Analytics and reports with modern UI
+  */
+ 
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useCallback } from 'react';
++import { useSearchParams } from 'react-router-dom';
+ import api from '../api/api';
+ import axiosInstance from '../api/axios';
+ import { API_CONFIG } from '../constants/api';
+ import Alert from '../components/Alert';
++import Table from '../components/Table';
+ import { AlertCircle, Download } from 'lucide-react';
+ 
++const POSTULACIONES_TAB = 'postulaciones';
++const ESTADO_OPTIONS = [
++  { label: 'Borrador', value: 'borrador' },
++  { label: 'En revisi├│n', value: 'en_revision' },
++  { label: 'Aprobada', value: 'aprobada' },
++  { label: 'Rechazada', value: 'rechazada' },
++];
++const ESTADO_GENERAL_OPTIONS = [
++  { label: 'En proceso', value: 'EN_PROCESO' },
++  { label: 'Perfil aprobado', value: 'PERFIL_APROBADO' },
++  { label: 'Privada aprobada', value: 'PRIVADA_APROBADA' },
++  { label: 'Publica aprobada', value: 'PUBLICA_APROBADA' },
++  { label: 'Titulado', value: 'TITULADO' },
++];
++const SEMESTRE_OPTIONS = [
++  { label: '1', value: '1' },
++  { label: '2', value: '2' },
++];
++const GESTION_OPTIONS = Array.from({ length: 6 }, (_, index) => {
++  const year = new Date().getFullYear() - index;
++  return { id: year, label: String(year) };
++});
++const POSTULACIONES_PAGE_SIZE = 20;
++
+ const Reportes = () => {
+   const [reportData, setReportData] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState('');
+   const [activeTab, setActiveTab] = useState('general');
+   const [exportingTutores, setExportingTutores] = useState(false);
++  const [searchParams, setSearchParams] = useSearchParams();
++  const [postulaciones, setPostulaciones] = useState([]);
++  const [postulacionesMeta, setPostulacionesMeta] = useState({ count: 0, next: null, previous: null });
++  const [postulacionesSummary, setPostulacionesSummary] = useState(null);
++  const [postulacionesLoading, setPostulacionesLoading] = useState(false);
++  const [postulacionesError, setPostulacionesError] = useState('');
++  const [modalidades, setModalidades] = useState([]);
++  const [search, setSearch] = useState(searchParams.get('search') || '');
++  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
++  const [filterModalidad, setFilterModalidad] = useState(searchParams.get('modalidad') || '');
++  const [filterGestion, setFilterGestion] = useState(searchParams.get('gestion') || '');
++  const [filterSemestre, setFilterSemestre] = useState(searchParams.get('semestre_academico') || '');
++  const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
++  const [filterEstadoGeneral, setFilterEstadoGeneral] = useState(searchParams.get('estado_general') || '');
++  const [filterCarrera, setFilterCarrera] = useState(searchParams.get('carrera') || '');
++  const [filterTutor, setFilterTutor] = useState(searchParams.get('tutor') || '');
+ 
+   useEffect(() => {
+-    fetchReportData();
++    if (activeTab !== POSTULACIONES_TAB) {
++      fetchReportData();
++    }
+   }, [activeTab]);
+ 
++  useEffect(() => {
++    if (activeTab !== POSTULACIONES_TAB) {
++      return;
++    }
++
++    const params = {};
++    if (search) params.search = search;
++    if (page > 1) params.page = page;
++    if (filterModalidad) params.modalidad = filterModalidad;
++    if (filterGestion) params.gestion = filterGestion;
++    if (filterSemestre) params.semestre_academico = filterSemestre;
++    if (filterEstado) params.estado = filterEstado;
++    if (filterEstadoGeneral) params.estado_general = filterEstadoGeneral;
++    if (filterCarrera) params.carrera = filterCarrera;
++    if (filterTutor) params.tutor = filterTutor;
++
++    setSearchParams(params, { replace: true });
++    fetchPostulaciones(params);
++  }, [
++    activeTab,
++    search,
++    page,
++    filterModalidad,
++    filterGestion,
++    filterSemestre,
++    filterEstado,
++    filterEstadoGeneral,
++    filterCarrera,
++    filterTutor,
++    setSearchParams,
++    fetchPostulaciones,
++  ]);
++
++  useEffect(() => {
++    const loadModalidades = async () => {
++      try {
++        const result = await api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES, {}, { skipGlobalLoader: true });
++        if (result.success) {
++          const data = Array.isArray(result.data) ? result.data : result.data.results || [];
++          setModalidades(data);
++        }
++      } catch (err) {
++        console.error('Error cargando modalidades:', err);
++      }
++    };
++
++    if (activeTab === POSTULACIONES_TAB) {
++      loadModalidades();
++    }
++  }, [activeTab]);
++
++  const fetchPostulaciones = useCallback(async (params = {}) => {
++    setPostulacionesLoading(true);
++    setPostulacionesError('');
++
++    try {
++      const queryParams = {
++        ...params,
++        page_size: POSTULACIONES_PAGE_SIZE,
++      };
++      const result = await api.getAll(
++        API_CONFIG.ENDPOINTS.REPORTE_POSTULACIONES,
++        queryParams,
++        { skipGlobalLoader: true }
++      );
++
++      if (result.success) {
++        const data = result.data || {};
++        const rows = Array.isArray(data) ? data : data.results || [];
++        setPostulaciones(rows);
++        setPostulacionesMeta({
++          count: data.count ?? rows.length,
++          next: data.next ?? null,
++          previous: data.previous ?? null,
++        });
++        setPostulacionesSummary(data.summary || null);
++      } else {
++        setPostulacionesError(result.error || 'Error al cargar el reporte de postulaciones');
++      }
++    } catch (err) {
++      setPostulacionesError('Error al cargar el reporte de postulaciones');
++    } finally {
++      setPostulacionesLoading(false);
++    }
++  }, []);
++
+   const fetchReportData = async () => {
+     try {
+       setLoading(true);
+@@ -190,6 +320,16 @@ const Reportes = () => {
+     );
+   };
+ 
++  const getEstadoBadge = (estado) => {
++    const colors = {
++      borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
++      en_revision: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
++      aprobada: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
++      rechazada: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
++    };
++    return colors[estado] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
++  };
++
+   const renderTutoresStats = () => {
+     if (!reportData?.results) return null;
+ 
+@@ -249,6 +389,228 @@ const Reportes = () => {
+     );
+   };
+ 
++  const renderPostulacionesSummary = () => {
++    if (!postulacionesSummary) return null;
++
++    return (
++      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
++        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
++          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Postulaciones</p>
++          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_postulaciones ?? 0}</p>
++        </div>
++        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
++          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Titulado</p>
++          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_titulados ?? 0}</p>
++        </div>
++        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
++          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En Proceso</p>
++          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_en_proceso ?? 0}</p>
++        </div>
++        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
++          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Aprobadas</p>
++          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_aprobadas ?? 0}</p>
++        </div>
++        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
++          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Rechazadas</p>
++          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_rechazadas ?? 0}</p>
++        </div>
++      </div>
++    );
++  };
++
++  const renderPostulacionesEstadoGeneral = () => {
++    if (!postulacionesSummary?.estado_general_counts) return null;
++
++    return (
++      <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mb-6">
++        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Postulaciones por Estado General</h3>
++        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
++          {postulacionesSummary.estado_general_counts.map((item, idx) => (
++            <div key={idx} className="rounded-lg border border-gray-300 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
++              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{item.estado_general || 'Sin estado'}</p>
++              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{item.total ?? 0}</p>
++            </div>
++          ))}
++        </div>
++      </div>
++    );
++  };
++
++  const renderPostulacionesTable = () => {
++    const columns = [
++      { key: 'id', label: 'ID' },
++      { key: 'postulante_nombre', label: 'Postulante' },
++      { key: 'postulante_carrera', label: 'Carrera' },
++      { key: 'modalidad_nombre', label: 'Modalidad' },
++      { key: 'tutor', label: 'Tutor' },
++      {
++        key: 'periodo_academico_display',
++        label: 'Per├¡odo',
++        render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
++      },
++      {
++        key: 'estado',
++        label: 'Estado',
++        render: (value, row) => (
++          <span className={`px-2 py-1 rounded text-sm font-medium ${getEstadoBadge(value)}`}>
++            {row.estado_display || value || '-'}
++          </span>
++        ),
++      },
++      { key: 'estado_general', label: 'Estado General' },
++      { key: 'fecha_postulacion', label: 'Fecha' },
++    ];
++
++    return (
++      <div className="space-y-4">
++        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-4">
++          <div>
++            <input
++              type="text"
++              placeholder="Buscar por postulante, t├¡tulo, tutor..."
++              value={search}
++              onChange={(e) => {
++                setSearch(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            />
++          </div>
++          <div>
++            <select
++              value={filterModalidad}
++              onChange={(e) => {
++                setFilterModalidad(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            >
++              <option value="">Todas las modalidades</option>
++              {modalidades.map((item) => (
++                <option key={item.id} value={item.id}>{item.nombre}</option>
++              ))}
++            </select>
++          </div>
++          <div>
++            <select
++              value={filterGestion}
++              onChange={(e) => {
++                setFilterGestion(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            >
++              <option value="">Gesti├│n</option>
++              {GESTION_OPTIONS.map((item) => (
++                <option key={item.id} value={item.id}>{item.label}</option>
++              ))}
++            </select>
++          </div>
++          <div>
++            <select
++              value={filterSemestre}
++              onChange={(e) => {
++                setFilterSemestre(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            >
++              <option value="">Semestre</option>
++              {SEMESTRE_OPTIONS.map((item) => (
++                <option key={item.value} value={item.value}>{item.label}</option>
++              ))}
++            </select>
++          </div>
++        </div>
++
++        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-4">
++          <div>
++            <select
++              value={filterEstado}
++              onChange={(e) => {
++                setFilterEstado(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            >
++              <option value="">Estado</option>
++              {ESTADO_OPTIONS.map((item) => (
++                <option key={item.value} value={item.value}>{item.label}</option>
++              ))}
++            </select>
++          </div>
++          <div>
++            <select
++              value={filterEstadoGeneral}
++              onChange={(e) => {
++                setFilterEstadoGeneral(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            >
++              <option value="">Estado general</option>
++              {ESTADO_GENERAL_OPTIONS.map((item) => (
++                <option key={item.value} value={item.value}>{item.label}</option>
++              ))}
++            </select>
++          </div>
++          <div>
++            <input
++              type="text"
++              placeholder="Carrera"
++              value={filterCarrera}
++              onChange={(e) => {
++                setFilterCarrera(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            />
++          </div>
++          <div>
++            <input
++              type="text"
++              placeholder="Tutor"
++              value={filterTutor}
++              onChange={(e) => {
++                setFilterTutor(e.target.value);
++                setPage(1);
++              }}
++              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
++            />
++          </div>
++        </div>
++
++        <Table
++          columns={columns}
++          data={postulaciones}
++          loading={postulacionesLoading}
++        />
++
++        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
++          <span className="text-sm text-gray-600 dark:text-gray-400">
++            Mostrando {postulaciones.length > 0 ? (page - 1) * POSTULACIONES_PAGE_SIZE + 1 : 0}ÔÇô{Math.min((page - 1) * POSTULACIONES_PAGE_SIZE + postulaciones.length, postulacionesMeta.count || 0)} de {postulacionesMeta.count || 0} registros
++          </span>
++          <div className="flex items-center gap-2">
++            <button
++              onClick={() => page > 1 && setPage((prev) => Math.max(1, prev - 1))}
++              disabled={!postulacionesMeta.previous}
++              className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
++            >
++              Anterior
++            </button>
++            <button
++              onClick={() => postulacionesMeta.next && setPage((prev) => prev + 1)}
++              disabled={!postulacionesMeta.next}
++              className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
++            >
++              Siguiente
++            </button>
++          </div>
++        </div>
++      </div>
++    );
++  };
++
+   const renderCarrerasStats = () => {
+     if (!reportData) return null;
+ 
+@@ -333,6 +695,7 @@ const Reportes = () => {
+           {[
+             { id: 'general', label: 'General', icon: '­ƒôè' },
+             { id: 'tutores', label: 'Tutores', icon: '­ƒæ¿ÔÇì­ƒÅ½' },
++            { id: POSTULACIONES_TAB, label: 'Postulaciones', icon: '­ƒôæ' },
+             { id: 'carreras', label: 'Carreras', icon: '­ƒÄô' },
+           ].map((tab) => (
+             <button
+@@ -367,7 +730,7 @@ const Reportes = () => {
+         )}
+ 
+         {/* Loading */}
+-        {loading && (
++        {loading && activeTab !== POSTULACIONES_TAB && (
+           <div className="flex items-center justify-center h-96">
+             <div className="text-center">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+@@ -377,7 +740,7 @@ const Reportes = () => {
+         )}
+ 
+         {/* Content */}
+-        {!loading && !error && (
++        {activeTab !== POSTULACIONES_TAB && !loading && !error && (
+           <>
+             {activeTab === 'general' && renderGeneralStats()}
+             {activeTab === 'general' && reportData && renderByEstado()}
+@@ -404,6 +767,25 @@ const Reportes = () => {
+             </div>
+           </>
+         )}
++
++        {activeTab === POSTULACIONES_TAB && (
++          <>
++            {postulacionesError && (
++              <Alert
++                type="error"
++                message={postulacionesError}
++                onClose={() => setPostulacionesError('')}
++                autoClose={false}
++              />
++            )}
++            {renderPostulacionesSummary()}
++            {renderPostulacionesEstadoGeneral()}
++            {renderPostulacionesTable()}
++            <div className="mt-8 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">
++              <p>Ôä╣´©Å ├Ültima actualizaci├│n: {new Date().toLocaleString('es-ES')}</p>
++            </div>
++          </>
++        )}
+     </div>
+   );
+ };
+diff --git a/postulantes/serializers.py b/postulantes/serializers.py
+index 5ab3c1b..dceae25 100644
+--- a/postulantes/serializers.py
++++ b/postulantes/serializers.py
+@@ -61,6 +61,7 @@ class PostulanteDetailSerializer(serializers.ModelSerializer):
+ class PostulacionListSerializer(serializers.ModelSerializer):
+     """Serializer para listado de postulaciones."""
+     postulante_nombre = serializers.SerializerMethodField()
++    postulante_carrera = serializers.CharField(source='postulante.carrera', read_only=True)
+     modalidad = serializers.IntegerField(source='modalidad.id', read_only=True)
+     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
+     etapa_nombre = serializers.CharField(source='etapa_actual.nombre', read_only=True)
+@@ -70,7 +71,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
+     class Meta:
+         model = Postulacion
+         fields = [
+-            'id', 'postulante_nombre', 'modalidad', 'modalidad_nombre', 'titulo_trabajo',
++            'id', 'postulante_nombre', 'postulante_carrera', 'modalidad', 'modalidad_nombre', 'titulo_trabajo',
+             'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
+             'estado_general', 'fecha_postulacion'
+         ]
+diff --git a/reportes/services.py b/reportes/services.py
+index 878b307..27b51a4 100644
+--- a/reportes/services.py
++++ b/reportes/services.py
+@@ -65,6 +65,59 @@ def documentos_rechazados_por_postulacion(postulacion_id: int) -> dict:
+     }
+ 
+ 
++def build_postulaciones_report_queryset(filters: dict | None = None):
++    """Construye el queryset base para el reporte general de postulaciones."""
++    filters = filters or {}
++    queryset = Postulacion.objects.select_related('postulante', 'modalidad').all()
++
++    if filters.get('modalidad'):
++        queryset = queryset.filter(modalidad_id=filters['modalidad'])
++    if filters.get('gestion'):
++        queryset = queryset.filter(gestion=filters['gestion'])
++    if filters.get('anio_academico'):
++        queryset = queryset.filter(anio_academico=filters['anio_academico'])
++    if filters.get('semestre_academico'):
++        queryset = queryset.filter(semestre_academico=filters['semestre_academico'])
++    if filters.get('estado'):
++        queryset = queryset.filter(estado=filters['estado'])
++    if filters.get('estado_general'):
++        queryset = queryset.filter(estado_general=filters['estado_general'])
++    if filters.get('carrera'):
++        queryset = queryset.filter(postulante__carrera__icontains=filters['carrera'].strip())
++    if filters.get('tutor'):
++        queryset = queryset.filter(tutor__icontains=filters['tutor'].strip())
++    if filters.get('search'):
++        search = str(filters['search']).strip()
++        if search:
++            queryset = queryset.filter(
++                Q(titulo_trabajo__icontains=search)
++                | Q(tutor__icontains=search)
++                | Q(postulante__nombre__icontains=search)
++                | Q(postulante__apellido__icontains=search)
++                | Q(postulante__ci__icontains=search)
++                | Q(postulante__codigo_estudiante__icontains=search)
++            )
++
++    return queryset
++
++
++def get_postulaciones_report_summary(queryset):
++    """Calcula los totales resumidos para el reporte general de postulaciones."""
++    summary = queryset.aggregate(
++        total_postulaciones=Count('id'),
++        total_titulados=Count('id', filter=Q(estado_general='TITULADO')),
++        total_en_proceso=Count('id', filter=Q(estado_general='EN_PROCESO')),
++        total_aprobadas=Count('id', filter=Q(estado='aprobada')),
++        total_rechazadas=Count('id', filter=Q(estado='rechazada')),
++    )
++    summary['estado_general_counts'] = list(
++        queryset.values('estado_general')
++        .annotate(total=Count('id'))
++        .order_by('-total')
++    )
++    return summary
++
++
+ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
+     """
+     Dashboard general con validaciones defensivas para NULL values.
+diff --git a/reportes/views.py b/reportes/views.py
+index 245880a..335e7b7 100644
+--- a/reportes/views.py
++++ b/reportes/views.py
+@@ -5,9 +5,25 @@ from rest_framework.views import APIView
+ from rest_framework.permissions import IsAuthenticated, AllowAny
+ 
+ from config.permissions import PuedeVerDashboardInstitucionalPermission
++
++
++class ReportePagination(PageNumberPagination):
++    page_size = 20
++    page_size_query_param = 'page_size'
++    max_page_size = 100
+ from .health import HealthCheckService  # FASE 4: Health check
+ 
+-from .services import dashboard_general, detalle_alumnos_titulados_por_tutor, estadisticas_tutores, generar_excel_tutores, reporte_eficiencia_carreras, get_dashboard_chart_data
++from .services import (
++    dashboard_general,
++    detalle_alumnos_titulados_por_tutor,
++    estadisticas_tutores,
++    generar_excel_tutores,
++    reporte_eficiencia_carreras,
++    get_dashboard_chart_data,
++    build_postulaciones_report_queryset,
++    get_postulaciones_report_summary,
++)
++from postulantes.serializers import PostulacionListSerializer
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -77,6 +93,44 @@ class DashboardChartDataView(APIView):
+             }, status=200)
+ 
+ 
++class ReporteGeneralPostulacionesView(APIView):
++    permission_classes = [PuedeVerDashboardInstitucionalPermission]
++
++    def get(self, request):
++        try:
++            logger.info("ReporteGeneralPostulacionesView request por usuario: %s", request.user.id)
++            filters = {
++                'search': request.query_params.get('search'),
++                'modalidad': request.query_params.get('modalidad'),
++                'gestion': request.query_params.get('gestion'),
++                'anio_academico': request.query_params.get('anio_academico'),
++                'semestre_academico': request.query_params.get('semestre_academico'),
++                'estado': request.query_params.get('estado'),
++                'estado_general': request.query_params.get('estado_general'),
++                'carrera': request.query_params.get('carrera'),
++                'tutor': request.query_params.get('tutor'),
++            }
++
++            queryset = build_postulaciones_report_queryset(filters)
++            queryset = queryset.order_by('-fecha_postulacion')
++
++            paginator = ReportePagination()
++            page = paginator.paginate_queryset(queryset, request)
++            serializer = PostulacionListSerializer(page, many=True)
++            summary = get_postulaciones_report_summary(queryset)
++
++            response = paginator.get_paginated_response(serializer.data)
++            response.data['summary'] = summary
++            response.data['filters'] = {k: v for k, v in filters.items() if v}
++            return response
++        except Exception as e:
++            logger.error("Error en ReporteGeneralPostulacionesView: %s", str(e), exc_info=True)
++            return Response(
++                {'detail': 'Internal server error', 'error': str(e)},
++                status=500
++            )
++
++
+ class EstadisticasTutoresView(APIView):
+     permission_classes = [PuedeVerDashboardInstitucionalPermission]
+ 

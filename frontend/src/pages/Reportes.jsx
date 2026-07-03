@@ -3,12 +3,17 @@
  * Analytics and reports with modern UI
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/api';
 import axiosInstance from '../api/axios';
 import { API_CONFIG } from '../constants/api';
 import Alert from '../components/Alert';
+import Table from '../components/Table';
 import { AlertCircle, Download } from 'lucide-react';
+
+const POSTULACIONES_TAB = 'postulaciones';
+const POSTULACIONES_PAGE_SIZE = 20;
 
 const Reportes = () => {
   const [reportData, setReportData] = useState(null);
@@ -16,10 +21,115 @@ const Reportes = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('general');
   const [exportingTutores, setExportingTutores] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [postulaciones, setPostulaciones] = useState([]);
+  const [postulacionesMeta, setPostulacionesMeta] = useState({ count: 0, next: null, previous: null });
+  const [postulacionesSummary, setPostulacionesSummary] = useState(null);
+  const [postulacionesLoading, setPostulacionesLoading] = useState(false);
+  const [postulacionesError, setPostulacionesError] = useState('');
+  const [modalidadesOptions, setModalidadesOptions] = useState([]);
+  const [gestionesOptions, setGestionesOptions] = useState([]);
+  const [anioOptions, setAnioOptions] = useState([]);
+  const [semestresOptions, setSemestresOptions] = useState([]);
+  const [estadoOptions, setEstadoOptions] = useState([]);
+  const [estadoGeneralOptions, setEstadoGeneralOptions] = useState([]);
+  const [carreraOptions, setCarreraOptions] = useState([]);
+  const [tutorOptions, setTutorOptions] = useState([]);
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+  const [filterModalidad, setFilterModalidad] = useState(searchParams.get('modalidad') || '');
+  const [filterGestion, setFilterGestion] = useState(searchParams.get('gestion') || '');
+  const [filterSemestre, setFilterSemestre] = useState(searchParams.get('semestre_academico') || '');
+  const [filterAnio, setFilterAnio] = useState(searchParams.get('anio_academico') || '');
+  const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
+  const [filterEstadoGeneral, setFilterEstadoGeneral] = useState(searchParams.get('estado_general') || '');
+  const [filterCarrera, setFilterCarrera] = useState(searchParams.get('carrera') || '');
+  const [filterTutor, setFilterTutor] = useState(searchParams.get('tutor') || '');
 
   useEffect(() => {
-    fetchReportData();
+    if (activeTab !== POSTULACIONES_TAB) {
+      fetchReportData();
+    }
   }, [activeTab]);
+
+  const fetchPostulaciones = useCallback(async (params = {}) => {
+    setPostulacionesLoading(true);
+    setPostulacionesError('');
+
+    try {
+      const queryParams = {
+        ...params,
+        page_size: POSTULACIONES_PAGE_SIZE,
+      };
+      const result = await api.getAll(
+        API_CONFIG.ENDPOINTS.REPORTE_POSTULACIONES,
+        queryParams,
+        { skipGlobalLoader: true }
+      );
+
+      if (result.success) {
+        const data = result.data || {};
+        const rows = Array.isArray(data) ? data : data.results || [];
+        setPostulaciones(rows);
+        setPostulacionesMeta({
+          count: data.count ?? rows.length,
+          next: data.next ?? null,
+          previous: data.previous ?? null,
+        });
+        setPostulacionesSummary(data.summary || null);
+
+        const filtersAvailable = data.filters_available || {};
+        setModalidadesOptions(filtersAvailable.modalidades || []);
+        setGestionesOptions(filtersAvailable.gestiones || []);
+        setAnioOptions(filtersAvailable.anio_academicos || []);
+        setSemestresOptions(filtersAvailable.semestres_academicos || []);
+        setEstadoOptions(filtersAvailable.estados || []);
+        setEstadoGeneralOptions(filtersAvailable.estado_generales || []);
+        setCarreraOptions(filtersAvailable.carreras || []);
+        setTutorOptions(filtersAvailable.tutores || []);
+      } else {
+        setPostulacionesError(result.error || 'Error al cargar el reporte de postulaciones');
+      }
+    } catch (err) {
+      setPostulacionesError('Error al cargar el reporte de postulaciones');
+    } finally {
+      setPostulacionesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== POSTULACIONES_TAB) {
+      return;
+    }
+
+    const params = {};
+    if (search) params.search = search;
+    if (page > 1) params.page = page;
+    if (filterModalidad) params.modalidad = filterModalidad;
+    if (filterGestion) params.gestion = filterGestion;
+    if (filterSemestre) params.semestre_academico = filterSemestre;
+    if (filterEstado) params.estado = filterEstado;
+    if (filterEstadoGeneral) params.estado_general = filterEstadoGeneral;
+    if (filterCarrera) params.carrera = filterCarrera;
+    if (filterTutor) params.tutor = filterTutor;
+
+    setSearchParams(params, { replace: true });
+    fetchPostulaciones(params);
+  }, [
+    activeTab,
+    search,
+    page,
+    filterModalidad,
+    filterGestion,
+    filterAnio,
+    filterSemestre,
+    filterEstado,
+    filterEstadoGeneral,
+    filterCarrera,
+    filterTutor,
+    setSearchParams,
+    fetchPostulaciones,
+  ]);
 
   const fetchReportData = async () => {
     try {
@@ -52,19 +162,12 @@ const Reportes = () => {
   const handleExport = async () => {
     try {
       setExportingTutores(true);
-      const token = localStorage.getItem(API_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
-      console.log('Exportar Excel - token present:', !!token);
-      console.log('Exportar Excel request:', {
-        url: API_CONFIG.ENDPOINTS.EXPORTAR_ESTADISTICAS,
-        responseType: 'blob'
-      });
 
       const response = await axiosInstance.get(
         API_CONFIG.ENDPOINTS.EXPORTAR_ESTADISTICAS,
         { responseType: 'blob' }
       );
-      
-      console.log('Export response status:', response.status);
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -75,20 +178,6 @@ const Reportes = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export failed:', err);
-      console.log('=== ERROR RESPONSE DATA ===');
-      console.log('Status:', err.response?.status);
-      console.log('Headers:', err.response?.headers);
-      if (err.response?.data instanceof Blob) {
-        const text = await err.response.data.text();
-        console.log('ERROR BODY:', text);
-      } else if (err.response?.data && typeof err.response.data.text === 'function') {
-        const text = await err.response.data.text();
-        console.log('ERROR BODY:', text);
-      } else {
-        console.log('Data:', err.response?.data);
-      }
-      console.log('Config:', err.config);
-      console.log('Full error:', err);
       setError('Error al exportar estadísticas');
     } finally {
       setExportingTutores(false);
@@ -190,6 +279,16 @@ const Reportes = () => {
     );
   };
 
+  const getEstadoBadge = (estado) => {
+    const colors = {
+      borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+      en_revision: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+      aprobada: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      rechazada: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    };
+    return colors[estado] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  };
+
   const renderTutoresStats = () => {
     if (!reportData?.results) return null;
 
@@ -244,6 +343,234 @@ const Reportes = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPostulacionesSummary = () => {
+    if (!postulacionesSummary) return null;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Postulaciones</p>
+          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_postulaciones ?? 0}</p>
+        </div>
+        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Titulado</p>
+          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_titulados ?? 0}</p>
+        </div>
+        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En Proceso</p>
+          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_en_proceso ?? 0}</p>
+        </div>
+        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Aprobadas</p>
+          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_aprobadas ?? 0}</p>
+        </div>
+        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Rechazadas</p>
+          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_rechazadas ?? 0}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPostulacionesEstadoGeneral = () => {
+    if (!postulacionesSummary?.estado_general_counts) return null;
+
+    return (
+      <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mb-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Postulaciones por Estado General</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {postulacionesSummary.estado_general_counts.map((item, idx) => (
+            <div key={idx} className="rounded-lg border border-gray-300 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{item.estado_general || 'Sin estado'}</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{item.total ?? 0}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPostulacionesTable = () => {
+    const columns = [
+      { key: 'id', label: 'ID' },
+      { key: 'postulante_nombre', label: 'Postulante' },
+      { key: 'postulante_carrera', label: 'Carrera' },
+      { key: 'modalidad_nombre', label: 'Modalidad' },
+      { key: 'tutor', label: 'Tutor' },
+      {
+        key: 'periodo_academico_display',
+        label: 'Período',
+        render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
+      },
+      {
+        key: 'estado',
+        label: 'Estado',
+        render: (value, row) => (
+          <span className={`px-2 py-1 rounded text-sm font-medium ${getEstadoBadge(value)}`}>
+            {row.estado_display || value || '-'}
+          </span>
+        ),
+      },
+      { key: 'estado_general', label: 'Estado General' },
+      { key: 'fecha_postulacion', label: 'Fecha' },
+    ];
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Buscar por postulante, título, tutor..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
+          </div>
+          <div>
+            <select
+              value={filterModalidad}
+              onChange={(e) => {
+                setFilterModalidad(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Todas las modalidades</option>
+              {modalidadesOptions.map((item) => (
+                <option key={item.id} value={item.id}>{item.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={filterGestion}
+              onChange={(e) => {
+                setFilterGestion(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Gestión</option>
+              {gestionesOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={filterSemestre}
+              onChange={(e) => {
+                setFilterSemestre(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Semestre</option>
+              {semestresOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-4">
+          <div>
+            <select
+              value={filterEstado}
+              onChange={(e) => {
+                setFilterEstado(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Estado</option>
+              {estadoOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={filterEstadoGeneral}
+              onChange={(e) => {
+                setFilterEstadoGeneral(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Estado general</option>
+              {estadoGeneralOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={filterCarrera}
+              onChange={(e) => {
+                setFilterCarrera(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Todas las carreras</option>
+              {carreraOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <select
+              value={filterTutor}
+              onChange={(e) => {
+                setFilterTutor(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Todos los tutores</option>
+              {tutorOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <Table
+          columns={columns}
+          data={postulaciones}
+          loading={postulacionesLoading}
+        />
+
+        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            Mostrando {postulaciones.length > 0 ? (page - 1) * POSTULACIONES_PAGE_SIZE + 1 : 0}–{Math.min((page - 1) * POSTULACIONES_PAGE_SIZE + postulaciones.length, postulacionesMeta.count || 0)} de {postulacionesMeta.count || 0} registros
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => page > 1 && setPage((prev) => Math.max(1, prev - 1))}
+              disabled={!postulacionesMeta.previous}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => postulacionesMeta.next && setPage((prev) => prev + 1)}
+              disabled={!postulacionesMeta.next}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -333,6 +660,7 @@ const Reportes = () => {
           {[
             { id: 'general', label: 'General', icon: '📊' },
             { id: 'tutores', label: 'Tutores', icon: '👨‍🏫' },
+            { id: POSTULACIONES_TAB, label: 'Postulaciones', icon: '📑' },
             { id: 'carreras', label: 'Carreras', icon: '🎓' },
           ].map((tab) => (
             <button
@@ -367,7 +695,7 @@ const Reportes = () => {
         )}
 
         {/* Loading */}
-        {loading && (
+        {loading && activeTab !== POSTULACIONES_TAB && (
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -377,7 +705,7 @@ const Reportes = () => {
         )}
 
         {/* Content */}
-        {!loading && !error && (
+        {activeTab !== POSTULACIONES_TAB && !loading && !error && (
           <>
             {activeTab === 'general' && renderGeneralStats()}
             {activeTab === 'general' && reportData && renderByEstado()}
@@ -399,6 +727,25 @@ const Reportes = () => {
             {activeTab === 'carreras' && renderCarrerasStats()}
 
             {/* Footer */}
+            <div className="mt-8 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">
+              <p>ℹ️ Última actualización: {new Date().toLocaleString('es-ES')}</p>
+            </div>
+          </>
+        )}
+
+        {activeTab === POSTULACIONES_TAB && (
+          <>
+            {postulacionesError && (
+              <Alert
+                type="error"
+                message={postulacionesError}
+                onClose={() => setPostulacionesError('')}
+                autoClose={false}
+              />
+            )}
+            {renderPostulacionesSummary()}
+            {renderPostulacionesEstadoGeneral()}
+            {renderPostulacionesTable()}
             <div className="mt-8 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">
               <p>ℹ️ Última actualización: {new Date().toLocaleString('es-ES')}</p>
             </div>

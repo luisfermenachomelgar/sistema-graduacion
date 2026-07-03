@@ -6,7 +6,16 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from documentos.views import DocumentoPostulacionViewSet, TipoDocumentoViewSet
 from modalidades.views import EtapaViewSet, ModalidadViewSet
 from postulantes.views import NotificacionViewSet, PostulacionViewSet, PostulanteViewSet
-from reportes.views import DashboardGeneralView, DetalleAlumnosTutorView, EstadisticasTutoresView, ExportarEstadisticasTutoresView, ReporteEficienciaCarrerasView, HealthCheckView, DashboardChartDataView  # FASE 4: Health check
+from reportes.views import (
+    DashboardGeneralView,
+    DetalleAlumnosTutorView,
+    EstadisticasTutoresView,
+    ExportarEstadisticasTutoresView,
+    ReporteEficienciaCarrerasView,
+    HealthCheckView,
+    DashboardChartDataView,
+    ReporteGeneralPostulacionesView,
+)  # FASE 4: Health check
 from usuarios.views import LoginView, CustomUserViewSet
 
 router = DefaultRouter()
@@ -26,6 +35,7 @@ urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='health_check'),  # FASE 4: Health check (sin autenticación)
     path('reportes/dashboard-general/', DashboardGeneralView.as_view(), name='dashboard_general'),
     path('reportes/dashboard-chart-data/', DashboardChartDataView.as_view(), name='dashboard_chart_data'),
+    path('reportes/postulaciones/', ReporteGeneralPostulacionesView.as_view(), name='reporte_general_postulaciones'),
     path('reportes/estadisticas-tutores/', EstadisticasTutoresView.as_view(), name='estadisticas_tutores'),
     path('reportes/estadisticas-tutores/exportar/', ExportarEstadisticasTutoresView.as_view(), name='exportar_estadisticas_tutores'),
     path('reportes/estadisticas-tutores/<int:tutor_id>/alumnos/', DetalleAlumnosTutorView.as_view(), name='detalle_alumnos_tutor'),

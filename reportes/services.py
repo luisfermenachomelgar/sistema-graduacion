@@ -65,6 +65,145 @@ def documentos_rechazados_por_postulacion(postulacion_id: int) -> dict:
     }
 
 
+def build_postulaciones_report_queryset(filters: dict | None = None):
+    """Construye el queryset base para el reporte general de postulaciones."""
+    filters = filters or {}
+    queryset = Postulacion.objects.select_related('postulante', 'modalidad').all()
+
+    if filters.get('modalidad'):
+        queryset = queryset.filter(modalidad_id=filters['modalidad'])
+    if filters.get('gestion'):
+        queryset = queryset.filter(gestion=filters['gestion'])
+    if filters.get('anio_academico'):
+        queryset = queryset.filter(anio_academico=filters['anio_academico'])
+    if filters.get('semestre_academico'):
+        queryset = queryset.filter(semestre_academico=filters['semestre_academico'])
+    if filters.get('estado'):
+        queryset = queryset.filter(estado=filters['estado'])
+    if filters.get('estado_general'):
+        queryset = queryset.filter(estado_general=filters['estado_general'])
+    if filters.get('carrera'):
+        queryset = queryset.filter(postulante__carrera__icontains=filters['carrera'].strip())
+    if filters.get('tutor'):
+        queryset = queryset.filter(tutor__icontains=filters['tutor'].strip())
+    if filters.get('search'):
+        search = str(filters['search']).strip()
+        if search:
+            queryset = queryset.filter(
+                Q(titulo_trabajo__icontains=search)
+                | Q(tutor__icontains=search)
+                | Q(postulante__nombre__icontains=search)
+                | Q(postulante__apellido__icontains=search)
+                | Q(postulante__ci__icontains=search)
+                | Q(postulante__codigo_estudiante__icontains=search)
+            )
+
+    return queryset
+
+
+def get_postulaciones_report_summary(queryset):
+    """Calcula los totales resumidos para el reporte general de postulaciones."""
+    summary = queryset.aggregate(
+        total_postulaciones=Count('id'),
+        total_titulados=Count('id', filter=Q(estado_general='TITULADO')),
+        total_en_proceso=Count('id', filter=Q(estado_general='EN_PROCESO')),
+        total_aprobadas=Count('id', filter=Q(estado='aprobada')),
+        total_rechazadas=Count('id', filter=Q(estado='rechazada')),
+    )
+    summary['estado_general_counts'] = list(
+        queryset.values('estado_general')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    return summary
+
+
+def get_postulaciones_report_filters():
+    """Retorna opciones dinámicas para los filtros del reporte de postulaciones."""
+    modalidades = list(
+        Modalidad.objects.filter(postulaciones__isnull=False)
+        .distinct()
+        .order_by('nombre')
+        .values('id', 'nombre')
+    )
+
+    gestiones = list(
+        Postulacion.objects.filter(gestion__isnull=False)
+        .order_by('-gestion')
+        .values_list('gestion', flat=True)
+        .distinct()
+    )
+
+    anios_academicos = list(
+        Postulacion.objects.filter(anio_academico__isnull=False)
+        .order_by('-anio_academico')
+        .values_list('anio_academico', flat=True)
+        .distinct()
+    )
+
+    semestres_academicos = list(
+        Postulacion.objects.filter(semestre_academico__isnull=False)
+        .order_by('semestre_academico')
+        .values_list('semestre_academico', flat=True)
+        .distinct()
+    )
+
+    carreras = list(
+        Postulacion.objects.filter(postulante__carrera__isnull=False)
+        .exclude(postulante__carrera__exact='')
+        .order_by('postulante__carrera')
+        .values_list('postulante__carrera', flat=True)
+        .distinct()
+    )
+
+    tutores = list(
+        Postulacion.objects.filter(tutor__isnull=False)
+        .exclude(tutor__exact='')
+        .order_by('tutor')
+        .values_list('tutor', flat=True)
+        .distinct()
+    )
+
+    estados_presentes = set(
+        Postulacion.objects.filter(estado__isnull=False)
+        .order_by('estado')
+        .values_list('estado', flat=True)
+        .distinct()
+    )
+
+    estado_generales_presentes = set(
+        Postulacion.objects.filter(estado_general__isnull=False)
+        .order_by('estado_general')
+        .values_list('estado_general', flat=True)
+        .distinct()
+    )
+
+    estado_options = [
+        {'value': value, 'label': label}
+        for value, label in Postulacion.ESTADO_CHOICES
+        if value in estados_presentes
+    ]
+
+    estado_general_options = [
+        {'value': value, 'label': label}
+        for value, label in Postulacion.ESTADO_GENERAL_CHOICES
+        if value in estado_generales_presentes
+    ]
+
+    return {
+        'modalidades': modalidades,
+        'gestiones': [{'value': gestion, 'label': str(gestion)} for gestion in gestiones],
+        'anio_academicos': [{'value': anio, 'label': str(anio)} for anio in anios_academicos],
+        'semestres_academicos': [
+            {'value': semestre, 'label': str(semestre)} for semestre in semestres_academicos
+        ],
+        'estados': estado_options,
+        'estado_generales': estado_general_options,
+        'carreras': [{'value': carrera, 'label': carrera} for carrera in carreras],
+        'tutores': [{'value': tutor, 'label': tutor} for tutor in tutores],
+    }
+
+
 def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
     """
     Dashboard general con validaciones defensivas para NULL values.
