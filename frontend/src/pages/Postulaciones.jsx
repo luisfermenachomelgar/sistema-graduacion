@@ -102,10 +102,9 @@ const Postulaciones = () => {
       if (isStudent) return;
 
       try {
-        const [postResult, modResult, etapaResult] = await Promise.all([
+        const [postResult, modResult] = await Promise.all([
           api.getAll(API_CONFIG.ENDPOINTS.POSTULANTES, {}, { skipGlobalLoader: true }),
           api.getAll(API_CONFIG.ENDPOINTS.MODALIDADES, {}, { skipGlobalLoader: true }),
-          api.getAll(API_CONFIG.ENDPOINTS.ETAPAS, {}, { skipGlobalLoader: true }),
         ]);
 
         if (postResult.success) {
@@ -118,11 +117,26 @@ const Postulaciones = () => {
           setModalidades(modsData);
         }
 
-        if (etapaResult.success) {
-          const etapasData = Array.isArray(etapaResult.data) ? etapaResult.data : etapaResult.data.results || [];
-          setEtapas(etapasData);
+        // Fetch all etapas by iterating paginated results
+        const allEtapas = [];
+        let page = 1;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const res = await api.getAll(API_CONFIG.ENDPOINTS.ETAPAS, { page }, { skipGlobalLoader: true });
+          if (!res.success) break;
+          const payload = res.data;
+          if (Array.isArray(payload)) {
+            allEtapas.push(...payload);
+            break;
+          }
+          const results = payload.results || [];
+          allEtapas.push(...results);
+          if (!payload.next) break;
+          page += 1;
         }
+        setEtapas(allEtapas);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Error loading dropdown data:', err);
       }
     };
@@ -526,23 +540,37 @@ const Postulaciones = () => {
             </div>
           </section>
 
-          {/* 3. Estado de postulación */}
+          {/* 3. Configuración adicional */}
           <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Estado de postulación</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Estado actual, estado general y observaciones.</p>
-            </div>
+            <div className="mb-3"></div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               <FormField
-                label="Estado"
-                name="estado"
+                label="Etapa actual"
+                name="etapa_actual"
                 type="select"
-                value={formData.estado}
+                value={formData.etapa_actual}
                 onChange={handleInputChange}
-                options={ESTADO_OPTIONS}
-                required
+                options={
+                  formData.modalidad
+                    ? etapas
+                        .filter((etapa) => formData.modalidad && etapa.modalidad === formData.modalidad)
+                        .map((etapa) => ({ id: etapa.id, label: etapa.nombre }))
+                    : []
+                }
+                placeholder="Sin etapa actual"
+                helperText="Opcional. Si no se selecciona, la postulación queda sin etapa asignada."
+                className="sm:col-span-2"
               />
+            </div>
+          </section>
 
+          {/* 4. Seguimiento de postulación */}
+          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Seguimiento de postulación</h3>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Etapa actual y observaciones del proceso.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               {isEditMode ? (
                 <FormField
                   label="Estado General"
@@ -561,33 +589,6 @@ const Postulaciones = () => {
                 value={formData.observaciones}
                 onChange={handleInputChange}
                 placeholder="(opcional) Notas internas visibles para administradores"
-                className="sm:col-span-2"
-              />
-            </div>
-          </section>
-
-          {/* 4. Configuración adicional */}
-          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Configuración adicional</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Etapa actual de la postulación, según la modalidad seleccionada.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-              <FormField
-                label="Etapa actual"
-                name="etapa_actual"
-                type="select"
-                value={formData.etapa_actual}
-                onChange={handleInputChange}
-                options={
-                  formData.modalidad
-                    ? etapas
-                        .filter((etapa) => formData.modalidad && etapa.modalidad === formData.modalidad)
-                        .map((etapa) => ({ id: etapa.id, label: etapa.nombre }))
-                    : []
-                }
-                placeholder="Sin etapa actual"
-                helperText="Opcional. Si no se selecciona, la postulación queda sin etapa asignada."
                 className="sm:col-span-2"
               />
             </div>

@@ -64,6 +64,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
     postulante_carrera = serializers.CharField(source='postulante.carrera', read_only=True)
     modalidad = serializers.IntegerField(source='modalidad.id', read_only=True)
     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
+    etapa_actual = serializers.IntegerField(source='etapa_actual.id', read_only=True, allow_null=True)
     etapa_nombre = serializers.CharField(source='etapa_actual.nombre', read_only=True)
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
     periodo_academico_display = serializers.CharField(read_only=True)
@@ -71,7 +72,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Postulacion
         fields = [
-            'id', 'postulante_nombre', 'postulante_carrera', 'modalidad', 'modalidad_nombre', 'titulo_trabajo',
+            'id', 'postulante_nombre', 'postulante_carrera', 'modalidad', 'modalidad_nombre', 'etapa_actual', 'titulo_trabajo',
             'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
             'estado_general', 'fecha_postulacion'
         ]

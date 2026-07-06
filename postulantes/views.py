@@ -68,7 +68,7 @@ class PostulanteViewSet(viewsets.ModelViewSet):
 
 
 class PostulacionViewSet(viewsets.ModelViewSet):
-    queryset = Postulacion.objects.select_related('postulante', 'modalidad').all()
+    queryset = Postulacion.objects.select_related('postulante', 'modalidad', 'etapa_actual').all()
     serializer_class = PostulacionSerializer
     pagination_class = CustomPagination  # FASE 3: Applied
     # Configuración de filtros

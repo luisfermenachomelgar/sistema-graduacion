@@ -1,5 +1,7 @@
 from django.db import migrations
 
+ACTA_DEFENSA_NAME = 'Acta de Defensa de Tesis o de Modalidad de Graduación'
+
 
 def create_associations(apps, schema_editor):
     """Asocia tipos de documento a la modalidad Excelencia Académica usando la misma tabla que usa Proyecto de Grado."""
@@ -8,41 +10,67 @@ def create_associations(apps, schema_editor):
     TipoDocumento = apps.get_model('documentos', 'TipoDocumento')
     ModalidadTipoDocumento = apps.get_model('documentos', 'ModalidadTipoDocumento')
 
-    modalidad = Modalidad.objects.filter(nombre='Excelencia Académica').first()
+    modalidad = Modalidad.objects.filter(nombre__iexact='Excelencia Académica').first()
+    if not modalidad:
+        modalidad = Modalidad.objects.filter(nombre__icontains='excelencia').first()
     if not modalidad:
         return
 
     etapa_1 = Etapa.objects.filter(modalidad=modalidad, orden=1).first()
     etapa_2 = Etapa.objects.filter(modalidad=modalidad, orden=2).first()
     etapa_3 = Etapa.objects.filter(modalidad=modalidad, orden=3).first()
+    etapa_4 = Etapa.objects.filter(modalidad=modalidad, orden=4).first()
 
+    # Definir mapeos por etapa (sin duplicar tipos entre etapas)
     mappings = [
-        {'nombre': 'Carta de solicitud', 'etapa': etapa_1, 'obligatorio': True, 'orden': 1},
-        {'nombre': 'Certificado de notas', 'etapa': etapa_1, 'obligatorio': True, 'orden': 2},
-        {'nombre': 'Historial académico', 'etapa': etapa_1, 'obligatorio': True, 'orden': 3},
-        {'nombre': 'Fotocopia de CI', 'etapa': etapa_1, 'obligatorio': True, 'orden': 4},
+        # Registro
+        {'etapa': etapa_1, 'tipo_documentos': [
+            {'nombre': 'Carta de solicitud', 'obligatorio': True, 'orden': 1},
+            {'nombre': 'CV del Estudiante', 'obligatorio': True, 'orden': 2},
+            {'nombre': 'Fotocopia de CI', 'obligatorio': True, 'orden': 3},
+        ]},
+        # Revisión de Expediente
+        {'etapa': etapa_2, 'tipo_documentos': [
+            {'nombre': 'Certificado Académico', 'obligatorio': True, 'orden': 1},
+            {'nombre': 'Historial académico', 'obligatorio': True, 'orden': 2},
+        ]},
+        # Evaluación del Tribunal
+        {'etapa': etapa_3, 'tipo_documentos': [
+            {'nombre': ACTA_DEFENSA_NAME, 'obligatorio': True, 'orden': 1},
+        ]},
+        # Acta Final
+        {'etapa': etapa_4, 'tipo_documentos': [
+            {'nombre': 'Documento Final', 'obligatorio': True, 'orden': 1},
+        ]},
     ]
 
-    for mapping in mappings:
-        tipo_documento = TipoDocumento.objects.filter(nombre=mapping['nombre']).first()
-        if not tipo_documento:
-            tipo_documento = TipoDocumento.objects.create(
-                nombre=mapping['nombre'],
-                obligatorio=mapping['obligatorio'],
-                activo=True,
+    for group in mappings:
+        etapa_obj = group['etapa']
+        if not etapa_obj:
+            continue
+
+        for td in group['tipo_documentos']:
+            tipo_obj, _ = TipoDocumento.objects.update_or_create(
+                nombre=td['nombre'],
+                defaults={
+                    'descripcion': '',
+                    'obligatorio': td['obligatorio'],
+                    'activo': True,
+                    'etapa': None,
+                }
             )
 
-        ModalidadTipoDocumento.objects.get_or_create(
-            modalidad=modalidad,
-            tipo_documento=tipo_documento,
-            etapa=mapping['etapa'],
-            defaults={
-                'obligatorio': mapping['obligatorio'],
-                'orden': mapping['orden'],
-                'activo': True,
-                'descripcion_requerimiento': '',
-            },
-        )
+            ModalidadTipoDocumento.objects.update_or_create(
+                modalidad=modalidad,
+                tipo_documento=tipo_obj,
+                etapa=etapa_obj,
+                defaults={
+                    'obligatorio': td['obligatorio'],
+                    'orden': td['orden'],
+                    'activo': True,
+                    'descripcion_requerimiento': '',
+                }
+            )
 
 
 def reverse_associations(apps, schema_editor):
@@ -52,9 +80,12 @@ def reverse_associations(apps, schema_editor):
         modalidad__nombre='Excelencia Académica',
         tipo_documento__nombre__in=[
             'Carta de solicitud',
-            'Certificado de notas',
-            'Historial académico',
+            'CV del Estudiante',
             'Fotocopia de CI',
+            'Certificado Académico',
+            'Historial académico',
+            ACTA_DEFENSA_NAME,
+            'Documento Final',
         ],
     ).delete()
 

@@ -59,6 +59,8 @@ const Documentos = () => {
   const [tiposDocumentoPorModalidad, setTiposDocumentoPorModalidad] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [archivoFile, setArchivoFile] = useState(null);
+  const [etapaActualNombre, setEtapaActualNombre] = useState('');
+  const [etapas, setEtapas] = useState([]);
   
   // Modal de preview para visualizar PDFs
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -75,11 +77,19 @@ const Documentos = () => {
     list({}, { requestConfig: { skipGlobalLoader: true } });
   }, []);
 
+  useEffect(() => {
+    // Limpiar estado cuando se cierre el modal
+    if (!isOpen) {
+      setEtapaActualNombre('');
+    }
+  }, [isOpen]);
+
   const fetchDropdownData = async () => {
     try {
-      const [tiposRes, postRes] = await Promise.all([
+      const [tiposRes, postRes, etapaRes] = await Promise.all([
         api.getAll(API_CONFIG.ENDPOINTS.TIPOS_DOCUMENTO, {}, { skipGlobalLoader: true }),
         api.getAll(API_CONFIG.ENDPOINTS.POSTULACIONES, {}, { skipGlobalLoader: true }),
+        api.getAll(API_CONFIG.ENDPOINTS.ETAPAS, {}, { skipGlobalLoader: true }),
       ]);
 
       if (tiposRes.success) {
@@ -89,6 +99,10 @@ const Documentos = () => {
       if (postRes.success) {
         const postsData = Array.isArray(postRes.data) ? postRes.data : postRes.data.results || [];
         setPostulaciones(postsData);
+      }
+      if (etapaRes.success) {
+        const etapasData = Array.isArray(etapaRes.data) ? etapaRes.data : etapaRes.data.results || [];
+        setEtapas(etapasData);
       }
     } catch (err) {
       console.error('Error loading dropdown data:', err);
@@ -184,6 +198,14 @@ const Documentos = () => {
       const modalidadId = selectedPostulacion?.modalidad?.id || selectedPostulacion?.modalidad;
       const etapaId = selectedPostulacion?.etapa_actual || undefined;
 
+      // Extraer y mostrar el nombre de la etapa actual
+      if (etapaId) {
+        const etapaSeleccionada = etapas.find((e) => e.id === etapaId);
+        setEtapaActualNombre(etapaSeleccionada?.nombre || '');
+      } else {
+        setEtapaActualNombre('');
+      }
+
       if (modalidadId) {
         await getTiposDocumentoFiltrados(modalidadId, etapaId);
         setFormData((prev) => ({
@@ -255,6 +277,7 @@ const Documentos = () => {
     const loadFilteredTipos = async () => {
       if (!formData.postulacion) {
         setTiposDocumentoFiltrados([]);
+        setEtapaActualNombre('');
         return;
       }
 
@@ -262,13 +285,21 @@ const Documentos = () => {
       const modalidadId = selectedPostulacion?.modalidad?.id || selectedPostulacion?.modalidad;
       const etapaId = selectedPostulacion?.etapa_actual || undefined;
 
+      // Extraer y mostrar el nombre de la etapa actual
+      if (etapaId) {
+        const etapaSeleccionada = etapas.find((e) => e.id === etapaId);
+        setEtapaActualNombre(etapaSeleccionada?.nombre || '');
+      } else {
+        setEtapaActualNombre('');
+      }
+
       if (modalidadId) {
         await getTiposDocumentoFiltrados(modalidadId, etapaId);
       }
     };
 
     loadFilteredTipos();
-  }, [formData.postulacion, postulaciones]);
+  }, [formData.postulacion, postulaciones, etapas]);
 
   const handleDelete = async (documento) => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este documento?')) return;
@@ -353,6 +384,16 @@ const Documentos = () => {
           </div>
         );
       },
+    },
+    {
+      key: 'etapa_nombre',
+      label: 'Etapa',
+      sortable: true,
+      render: (value) => (
+        <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+          {value || '-'}
+        </span>
+      ),
     },
     {
       key: 'estado',
@@ -453,6 +494,17 @@ const Documentos = () => {
                     label: getPostulacionLabel(p),
                   }))}
                   required
+                  className="md:col-span-1"
+                />
+
+                <FormField
+                  label="Etapa Actual"
+                  name="etapa_actual"
+                  type="text"
+                  value={etapaActualNombre}
+                  readOnly={true}
+                  placeholder="Sincronizada automáticamente"
+                  helperText="Etapa sincronizada desde la postulación seleccionada"
                   className="md:col-span-1"
                 />
 

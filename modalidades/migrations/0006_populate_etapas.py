@@ -61,9 +61,13 @@ def create_etapas(apps, schema_editor):
         print("⚠️ Modalidad 'Examen de Grado' no encontrada, omitiendo etapas.")
     else:
         etapas_examen = [
-            {'orden': 1, 'nombre': 'Inscripción'},
-            {'orden': 2, 'nombre': 'Evaluación'},
-            {'orden': 3, 'nombre': 'Resultado Final'},
+            {'orden': 1, 'nombre': 'Registro'},
+            {'orden': 2, 'nombre': 'Examen – Ciencias Básicas y Matemáticas'},
+            {'orden': 3, 'nombre': 'Examen – Ciencias Sociales y Humanísticas'},
+            {'orden': 4, 'nombre': 'Examen – Ciencias de la Ingeniería'},
+            {'orden': 5, 'nombre': 'Examen – Ingeniería Aplicada'},
+            {'orden': 6, 'nombre': 'Acta de Calificación'},
+            {'orden': 7, 'nombre': 'Acta Final'},
         ]
         
         for etapa_data in etapas_examen:

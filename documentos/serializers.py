@@ -50,6 +50,9 @@ class DocumentoPostulacionListSerializer(serializers.ModelSerializer):
     tipo_documento_nombre = serializers.CharField(
         source='tipo_documento.nombre', read_only=True
     )
+    etapa_nombre = serializers.CharField(
+        source='postulacion.etapa_actual.nombre', read_only=True, allow_null=True
+    )
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
     revisado_por_nombre = serializers.CharField(
         source='revisado_por.get_full_name', read_only=True
@@ -59,7 +62,7 @@ class DocumentoPostulacionListSerializer(serializers.ModelSerializer):
         model = DocumentoPostulacion
         fields = [
             'id', 'postulacion_id', 'postulante_nombre', 'tipo_documento_nombre',
-            'estado', 'estado_display', 'revisado_por_nombre', 'fecha_subida', 'fecha_revision'
+            'etapa_nombre', 'estado', 'estado_display', 'revisado_por_nombre', 'fecha_subida', 'fecha_revision'
         ]
         read_only_fields = ['id', 'fecha_subida', 'fecha_revision']
 
@@ -68,6 +71,9 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado para documentos con validación de archivo."""
     tipo_documento_nombre = serializers.CharField(
         source='tipo_documento.nombre', read_only=True
+    )
+    etapa_nombre = serializers.CharField(
+        source='postulacion.etapa_actual.nombre', read_only=True, allow_null=True
     )
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
     revisado_por_nombre = serializers.CharField(
@@ -87,7 +93,7 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
         model = DocumentoPostulacion
         fields = [
             'id', 'postulacion', 'tipo_documento', 'tipo_documento_nombre',
-            'postulante_nombre', 'modalidad_nombre',
+            'postulante_nombre', 'modalidad_nombre', 'etapa_nombre',
             'archivo', 'archivo_url', 'archivo_tipo', 'archivo_tamaño',
             'estado', 'estado_display', 'comentario_revision',
             'revisado_por', 'revisado_por_nombre',
