@@ -49,6 +49,8 @@ const ACADEMIC_YEAR_OPTIONS = Array.from({ length: currentYear - 1990 + 1 }, (_,
   label: String(1990 + index),
 }));
 
+const HIDDEN_TITLE_TUTOR_MODALIDADES = ['EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA'];
+
 const Postulaciones = () => {
   const {
     data: postulaciones,
@@ -96,6 +98,11 @@ const Postulaciones = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(INITIAL_FORM_DATA);
+
+  const selectedModalidadNombre = formData.modalidad
+    ? (modalidades.find((m) => String(m.id) === String(formData.modalidad))?.nombre || '')
+    : '';
+  const shouldShowTrabajoFields = !HIDDEN_TITLE_TUTOR_MODALIDADES.includes(selectedModalidadNombre.trim().toUpperCase());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -147,10 +154,23 @@ const Postulaciones = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const numericFields = ['modalidad', 'postulante_id', 'anio_academico', 'semestre_academico', 'etapa_actual'];
-    setFormData({
+    const nextValue = numericFields.includes(name) ? (value ? parseInt(value) : '') : value;
+    const nextFormData = {
       ...formData,
-      [name]: numericFields.includes(name) ? (value ? parseInt(value) : '') : value,
-    });
+      [name]: nextValue,
+    };
+
+    if (name === 'modalidad') {
+      const selectedModalidad = modalidades.find((m) => String(m.id) === String(nextValue));
+      const normalizedModalidad = (selectedModalidad?.nombre || '').trim().toUpperCase();
+
+      if (HIDDEN_TITLE_TUTOR_MODALIDADES.includes(normalizedModalidad)) {
+        nextFormData.titulo_trabajo = '';
+        nextFormData.tutor = '';
+      }
+    }
+
+    setFormData(nextFormData);
   };
 
   const handleSubmit = async () => {
@@ -159,9 +179,14 @@ const Postulaciones = () => {
     setFormError('');
     setSuccess('');
 
-    // Validar campos requeridos (dropdowns)
-    if (!formData.postulante_id || !formData.modalidad || !formData.anio_academico || !formData.semestre_academico || !formData.titulo_trabajo) {
-      setFormError('Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo, Año y Semestre Académico)');
+    const hasRequiredTrabajoFields = shouldShowTrabajoFields ? !!formData.titulo_trabajo : true;
+
+    if (!formData.postulante_id || !formData.modalidad || !formData.anio_academico || !formData.semestre_academico || !hasRequiredTrabajoFields) {
+      setFormError(
+        shouldShowTrabajoFields
+          ? 'Por favor completa todos los campos requeridos (Postulante, Modalidad, Título del Trabajo, Año y Semestre Académico)'
+          : 'Por favor completa todos los campos requeridos (Postulante, Modalidad, Año y Semestre Académico)'
+      );
       setIsSubmitting(false);
       return;
     }
@@ -173,14 +198,16 @@ const Postulaciones = () => {
 
       const payload = {
         postulante_id: formData.postulante_id,
-        titulo_trabajo: formData.titulo_trabajo,
         anio_academico: formData.anio_academico,
         semestre_academico: formData.semestre_academico,
         estado: formData.estado,
         modalidad: formData.modalidad,
         etapa_actual: formData.etapa_actual || null,
-        tutor: formData.tutor,
         observaciones: formData.observaciones,
+        // El backend espera las claves; cuando los campos están ocultos
+        // enviamos cadenas vacías para evitar errores de "This field is required."
+        titulo_trabajo: shouldShowTrabajoFields ? formData.titulo_trabajo : '',
+        tutor: shouldShowTrabajoFields ? formData.tutor : '',
       };
 
       const result = isEditMode
@@ -501,33 +528,35 @@ const Postulaciones = () => {
           </section>
 
           {/* 2. Información académica */}
-          <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información académica</h3>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Título del trabajo y tutor asociado.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-              <FormField
-                label="Título del Trabajo"
-                name="titulo_trabajo"
-                type="text"
-                value={formData.titulo_trabajo}
-                onChange={handleInputChange}
-                placeholder="Título del trabajo"
-                required
-                className="sm:col-span-2"
-              />
+          {shouldShowTrabajoFields && (
+            <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100">Información académica</h3>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">Título del trabajo y tutor asociado.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+                <FormField
+                  label="Título del Trabajo"
+                  name="titulo_trabajo"
+                  type="text"
+                  value={formData.titulo_trabajo}
+                  onChange={handleInputChange}
+                  placeholder="Título del trabajo"
+                  required
+                  className="sm:col-span-2"
+                />
 
-              <FormField
-                label="Tutor"
-                name="tutor"
-                type="text"
-                value={formData.tutor}
-                onChange={handleInputChange}
-                placeholder="(opcional)"
-              />
-            </div>
-          </section>
+                <FormField
+                  label="Tutor"
+                  name="tutor"
+                  type="text"
+                  value={formData.tutor}
+                  onChange={handleInputChange}
+                  placeholder="(opcional)"
+                />
+              </div>
+            </section>
+          )}
 
           {/* 3. Configuración adicional */}
           <section className="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-5 sm:p-6 dark:border-gray-700 dark:bg-gray-800/60 shadow-sm">

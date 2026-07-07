@@ -95,6 +95,8 @@ class PostulacionListSerializer(serializers.ModelSerializer):
 
 class PostulacionDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado para postulación."""
+    titulo_trabajo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    tutor = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     postulante = PostulanteDetailSerializer(read_only=True)
     postulante_id = serializers.PrimaryKeyRelatedField(
         queryset=Postulante.objects.all(),
@@ -125,10 +127,45 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
                 message='El postulante ya cuenta con una postulación registrada para la gestión y período académico seleccionados.'
             )
         ]
-    
+
     def validate(self, attrs):
-        """Valida que la etapa pertenezca a la modalidad."""
-        modalidad = attrs.get('modalidad') or getattr(self.instance, 'modalidad', None)
+        # Determinar modalidad desde datos entrantes o instancia
+        modalidad_val = attrs.get('modalidad') or getattr(self.instance, 'modalidad', None)
+        modalidad_nombre = None
+        if modalidad_val is not None:
+            try:
+                modalidad_obj = modalidad_val if hasattr(modalidad_val, 'nombre') else None
+                if modalidad_obj is None:
+                    from modalidades.models import Modalidad
+                    modalidad_obj = Modalidad.objects.filter(pk=modalidad_val).first()
+                modalidad_nombre = modalidad_obj.nombre if modalidad_obj else None
+            except Exception:
+                modalidad_nombre = None
+
+        requires = ('PROYECTO DE GRADO', 'TESIS', 'TRABAJO DIRIGIDO')
+        optional = ('EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA')
+
+        modalidad_upper = modalidad_nombre.strip().upper() if modalidad_nombre else None
+
+        # El modelo no permite titulo_trabajo = None, así que normalizamos a cadena vacía
+        if attrs.get('titulo_trabajo') is None:
+            attrs['titulo_trabajo'] = ''
+        if attrs.get('tutor') is None:
+            attrs['tutor'] = ''
+
+        if modalidad_upper in requires:
+            if not attrs.get('titulo_trabajo'):
+                raise serializers.ValidationError({
+                    'titulo_trabajo': 'Este campo es requerido para la modalidad seleccionada.'
+                })
+            if not attrs.get('tutor'):
+                raise serializers.ValidationError({
+                    'tutor': 'Este campo es requerido para la modalidad seleccionada.'
+                })
+        elif modalidad_upper in optional:
+            attrs.setdefault('titulo_trabajo', '')
+            attrs.setdefault('tutor', '')
+
         etapa_actual = attrs.get('etapa_actual') or getattr(self.instance, 'etapa_actual', None)
         anio_academico = attrs.get('anio_academico', getattr(self.instance, 'anio_academico', None))
         semestre_academico = attrs.get('semestre_academico', getattr(self.instance, 'semestre_academico', None))
@@ -141,6 +178,43 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
 
         if semestre_academico not in (1, 2):
             raise serializers.ValidationError({'semestre_academico': 'El semestre académico debe ser 1 o 2.'})
+
+        postulante = attrs.get('postulante') or getattr(self.instance, 'postulante', None)
+        if postulante is not None:
+            existing = Postulacion.objects.filter(
+                postulante=postulante,
+                anio_academico=anio_academico,
+                semestre_academico=semestre_academico,
+            )
+            if self.instance is not None:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError({
+                    'non_field_errors': [
+                        'El postulante ya cuenta con una postulación registrada para la gestión y período académico seleccionados.'
+                    ]
+                })
+
+        modalidad_obj = modalidad_val if hasattr(modalidad_val, 'nombre') else modalidad_val
+        if postulante is not None and modalidad_obj is not None:
+            rechazadas_qs = Postulacion.objects.filter(
+                postulante=postulante,
+                modalidad=modalidad_obj,
+                estado='rechazada',
+            )
+            if self.instance is not None:
+                rechazadas_qs = rechazadas_qs.exclude(pk=self.instance.pk)
+            if rechazadas_qs.exists():
+                raise serializers.ValidationError({
+                    'modalidad': 'El estudiante ya fue rechazado anteriormente en esta modalidad y no puede volver a postularse a la misma.'
+                })
+
+        if modalidad_val and etapa_actual and etapa_actual.modalidad_id != modalidad_val.id:
+            raise serializers.ValidationError(
+                {'etapa_actual': 'La etapa debe pertenecer a la modalidad seleccionada.'}
+            )
+
+        return attrs
 
         postulante = attrs.get('postulante') or getattr(self.instance, 'postulante', None)
         if postulante is not None:
