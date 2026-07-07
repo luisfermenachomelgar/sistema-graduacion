@@ -1,7 +1,7 @@
+from django.db.models import Max, Q
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-from django.db.models import Max
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -112,7 +112,9 @@ class ModalidadViewSet(viewsets.ModelViewSet):
 
         etapa_id = request.query_params.get('etapa')
         if etapa_id:
-            queryset = queryset.filter(etapa_id=etapa_id)
+            queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
+        else:
+            queryset = queryset.filter(etapa__isnull=True)
 
         serializer = ModalidadTipoDocumentoSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)

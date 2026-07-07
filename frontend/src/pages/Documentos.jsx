@@ -185,7 +185,8 @@ const Documentos = () => {
       return;
     }
 
-    const newValue = ['postulacion', 'tipo_documento'].includes(name) ? parseInt(value) : value;
+    const numericFields = ['postulacion', 'tipo_documento'];
+    const newValue = numericFields.includes(name) ? (value ? parseInt(value, 10) : '') : value;
     const newFormData = {
       ...formData,
       [name]: newValue,
@@ -193,7 +194,17 @@ const Documentos = () => {
 
     setFormData(newFormData);
 
-    if (name === 'postulacion' && newValue) {
+    if (name === 'postulacion') {
+      if (!newValue) {
+        setTiposDocumentoFiltrados([]);
+        setEtapaActualNombre('');
+        setFormData((prev) => ({
+          ...prev,
+          tipo_documento: '',
+        }));
+        return;
+      }
+
       const selectedPostulacion = postulaciones.find((p) => p.id === newValue);
       const modalidadId = selectedPostulacion?.modalidad?.id || selectedPostulacion?.modalidad;
       const etapaId = selectedPostulacion?.etapa_actual || undefined;
@@ -214,6 +225,10 @@ const Documentos = () => {
         }));
       } else {
         setTiposDocumentoFiltrados([]);
+        setFormData((prev) => ({
+          ...prev,
+          tipo_documento: '',
+        }));
       }
     }
   };
@@ -521,6 +536,11 @@ const Documentos = () => {
                   required
                   className="md:col-span-1"
                 />
+                {formData.postulacion && tiposDocumentoFiltrados.length === 0 && (
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 md:col-span-1">
+                    No hay tipos de documento configurados para la modalidad y etapa actual de esta postulación.
+                  </p>
+                )}
 
                 {!isStudent && (
                   <FormField
