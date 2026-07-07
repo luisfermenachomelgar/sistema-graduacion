@@ -286,22 +286,11 @@ const Postulaciones = () => {
       render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
     },
     {
-      key: 'estado',
-      label: 'Estado',
-      render: (value, row) => {
-        const badgeClass = getEstadoBadge(value);
-        const label = row.estado_display || value || '-';
-        return (
-          <span className={`px-2 py-1 rounded text-sm font-medium ${badgeClass}`}>
-            {label}
-          </span>
-        );
+      key: 'etapa_actual',
+      label: 'Etapa Actual',
+      render: (_, row) => {
+        return row.etapa_actual?.nombre || row.etapa_nombre || 'Sin etapa';
       },
-    },
-    {
-      key: 'estado_general',
-      label: 'Estado General',
-      render: (value) => value || '-',
     },
     {
       key: 'acciones_avance',
