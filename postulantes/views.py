@@ -38,8 +38,10 @@ class PostulanteViewSet(viewsets.ModelViewSet):
     serializer_class = PostulanteSerializer
     pagination_class = CustomPagination  # FASE 3: Applied
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['usuario__username', 'nombre', 'apellido', 'ci', 'codigo_estudiante']
-    ordering_fields = ['id', 'creado_en', 'codigo_estudiante', 'nombre', 'apellido']
+    search_fields = [
+        'usuario__username', 'nombre', 'apellido_paterno', 'apellido_materno', 'ci', 'codigo_estudiante'
+    ]
+    ordering_fields = ['id', 'creado_en', 'codigo_estudiante', 'nombre', 'apellido_paterno', 'apellido_materno']
     ordering = ['id']
     permission_classes = [PostulanteRolePermission]
 

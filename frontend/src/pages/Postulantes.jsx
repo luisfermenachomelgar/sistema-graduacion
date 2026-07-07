@@ -21,7 +21,8 @@ const FIXED_FACULTAD = 'Facultad de Ingeniería y Tecnología';
 const INITIAL_FORM_DATA = {
   usuario: '',
   nombre: '',
-  apellido: '',
+  apellido_paterno: '',
+  apellido_materno: '',
   ci: '',
   codigo_estudiante: '',
   telefono: '',
@@ -133,7 +134,8 @@ const Postulantes = () => {
       const payload = {
         ...(isAdmin ? { usuario: formData.usuario ? Number(formData.usuario) : null } : {}),
         nombre: formData.nombre,
-        apellido: formData.apellido,
+        apellido_paterno: formData.apellido_paterno,
+        apellido_materno: formData.apellido_materno,
         ci: formData.ci,
         codigo_estudiante: formData.codigo_estudiante,
         telefono: formData.telefono,
@@ -183,7 +185,7 @@ const Postulantes = () => {
       key: 'nombre',
       label: 'Nombre',
       sortable: true,
-      render: (value, row) => `${row.nombre || ''} ${row.apellido || ''}`.trim() || '-',
+      render: (value, row) => [row.nombre, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ').trim() || '-',
     },
     {
       key: 'ci',
@@ -333,12 +335,21 @@ const Postulantes = () => {
                   required
                 />
                 <FormField
-                  label="Apellido"
-                  name="apellido"
+                  label="Apellido Paterno"
+                  name="apellido_paterno"
                   type="text"
-                  value={formData.apellido}
+                  value={formData.apellido_paterno}
                   onChange={handleInputChange}
-                  placeholder="Perez"
+                  placeholder="Pérez"
+                  required
+                />
+                <FormField
+                  label="Apellido Materno"
+                  name="apellido_materno"
+                  type="text"
+                  value={formData.apellido_materno}
+                  onChange={handleInputChange}
+                  placeholder="García"
                   required
                 />
                 <FormField

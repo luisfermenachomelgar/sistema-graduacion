@@ -14,6 +14,8 @@ class Postulante(models.Model):
     )
     nombre = models.CharField(max_length=150)
     apellido = models.CharField(max_length=150)
+    apellido_paterno = models.CharField(max_length=150, blank=True)
+    apellido_materno = models.CharField(max_length=150, blank=True)
     ci = models.CharField(max_length=20, unique=True)
     telefono = models.CharField(max_length=20)
     
@@ -28,14 +30,28 @@ class Postulante(models.Model):
         ordering = ['apellido', 'nombre']
 
     def __str__(self):
-        return f"{self.nombre} {self.apellido} - {self.codigo_estudiante}"
+        return f"{self.nombre} {self.apellido or self.apellido_paterno} - {self.codigo_estudiante}"
 
     def get_full_name(self):
         nombre = getattr(self, "nombre", "") or ""
-        apellido = getattr(self, "apellido", "") or ""
-        return f"{nombre} {apellido}".strip()
+        paterno = getattr(self, "apellido_paterno", "") or ""
+        materno = getattr(self, "apellido_materno", "") or ""
+        apellidos = " ".join(part for part in [paterno, materno] if part).strip()
+        if apellidos:
+            return f"{nombre} {apellidos}".strip()
+        apellido_legacy = getattr(self, "apellido", "") or ""
+        return f"{nombre} {apellido_legacy}".strip()
 
     def save(self, *args, **kwargs):
+        paterno = getattr(self, "apellido_paterno", "") or ""
+        materno = getattr(self, "apellido_materno", "") or ""
+        if paterno or materno:
+            self.apellido = " ".join(part for part in [paterno, materno] if part).strip()
+        elif getattr(self, "apellido", ""):
+            apellido_legacy = str(getattr(self, "apellido", "")).strip()
+            parts = apellido_legacy.split()
+            self.apellido_paterno = parts[0] if parts else ""
+            self.apellido_materno = " ".join(parts[1:]) if len(parts) > 1 else ""
         super().save(*args, **kwargs)
 
 

@@ -10,11 +10,12 @@ class PostulanteListSerializer(serializers.ModelSerializer):
     """Serializer para listado de postulantes (lectura)."""
     usuario_nombre = serializers.SerializerMethodField()
     usuario_email = serializers.SerializerMethodField()
+    nombre_completo = serializers.SerializerMethodField()
     
     class Meta:
         model = Postulante
         fields = [
-            'id', 'nombre', 'apellido', 'ci', 'codigo_estudiante',
+            'id', 'nombre', 'apellido_paterno', 'apellido_materno', 'nombre_completo', 'ci', 'codigo_estudiante',
             'telefono', 'usuario_nombre', 'usuario_email', 'creado_en'
         ]
         read_only_fields = ['id', 'creado_en']
@@ -27,6 +28,9 @@ class PostulanteListSerializer(serializers.ModelSerializer):
         usuario = getattr(obj, 'usuario', None)
         return usuario.email if usuario else None
 
+    def get_nombre_completo(self, obj):
+        return obj.get_full_name()
+
 
 class PostulanteDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado para postulante con información de usuario."""
@@ -35,12 +39,13 @@ class PostulanteDetailSerializer(serializers.ModelSerializer):
     usuario_nombre = serializers.SerializerMethodField()
     usuario_email = serializers.SerializerMethodField()
     usuario_username = serializers.SerializerMethodField()
+    nombre_completo = serializers.SerializerMethodField()
     
     class Meta:
         model = Postulante
         fields = [
             'id', 'usuario', 'usuario_id', 'usuario_username', 'usuario_nombre', 'usuario_email',
-            'nombre', 'apellido', 'ci', 'codigo_estudiante', 'telefono',
+            'nombre', 'apellido_paterno', 'apellido_materno', 'nombre_completo', 'ci', 'codigo_estudiante', 'telefono',
             'carrera', 'facultad', 'creado_en'
         ]
         read_only_fields = ['id', 'creado_en', 'usuario_id']
@@ -56,6 +61,9 @@ class PostulanteDetailSerializer(serializers.ModelSerializer):
     def get_usuario_username(self, obj):
         usuario = getattr(obj, 'usuario', None)
         return usuario.username if usuario else None
+
+    def get_nombre_completo(self, obj):
+        return obj.get_full_name()
 
 
 class PostulacionListSerializer(serializers.ModelSerializer):
@@ -79,9 +87,10 @@ class PostulacionListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'fecha_postulacion']
 
     def get_postulante_nombre(self, obj):
-        nombre = (obj.postulante.nombre or '').strip()
-        apellido = (obj.postulante.apellido or '').strip()
-        return f"{nombre} {apellido}".strip()
+        postulante = obj.postulante
+        if postulante is None:
+            return ''
+        return postulante.get_full_name()
 
 
 class PostulacionDetailSerializer(serializers.ModelSerializer):
