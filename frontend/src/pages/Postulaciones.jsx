@@ -322,8 +322,13 @@ const Postulaciones = () => {
     {
       key: 'acciones_avance',
       label: 'Acción',
-      render: (_, row) => (
-        !isStudent && (
+      render: (_, row) => {
+        if (isStudent) return null;
+        if (row.estado_general === 'FINALIZADA') {
+          return <span className="text-sm font-medium text-green-700 dark:text-green-400">Finalizada</span>;
+        }
+
+        return (
           <button
             type="button"
             onClick={() => handleAvanzarEtapa(row)}
@@ -331,8 +336,8 @@ const Postulaciones = () => {
           >
             Avanzar Etapa
           </button>
-        )
-      ),
+        );
+      },
     },
   ];
 

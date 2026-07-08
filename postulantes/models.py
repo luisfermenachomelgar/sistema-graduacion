@@ -73,6 +73,7 @@ class Postulacion(models.Model):
         ('PRIVADA_APROBADA', 'Privada aprobada'),
         ('PUBLICA_APROBADA', 'Publica aprobada'),
         ('TITULADO', 'Titulado'),
+        ('FINALIZADA', 'Finalizada'),
     )
 
     postulante = models.ForeignKey(Postulante, on_delete=models.CASCADE, related_name='postulaciones')
