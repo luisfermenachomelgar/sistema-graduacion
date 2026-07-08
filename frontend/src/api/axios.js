@@ -120,8 +120,8 @@ axiosInstance.interceptors.response.use(
       error.response?.data?.detail || 
       getErrorMessage(status);
 
-    // Show error notification (unless it's 401 during token refresh)
-    if (status && status !== 401) {
+    // Show error notification (unless it's 401 during token refresh or explicitly suppressed)
+    if (status && status !== 401 && !originalRequest?.suppressErrorToast) {
       showError(errorMessage);
     }
 

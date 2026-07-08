@@ -97,6 +97,34 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
             {'etapa_actual': 'La postulacion no tiene etapa actual configurada.'}
         )
 
+    etapa_actual_nombre = (postulacion.etapa_actual.nombre or '').strip().upper()
+    if es_modalidad_examen_grado(postulacion) and etapa_actual_nombre == ACTA_FINAL_EXAMEN_GRADO_ETAPA_NOMBRE:
+        has_acta_final = DocumentoPostulacion.objects.filter(
+            postulacion_id=postulacion.id,
+            tipo_documento__nombre__iexact=ACTA_FINAL_EXAMEN_GRADO_NOMBRE,
+            estado='aprobado',
+        ).exists()
+        if not has_acta_final:
+            raise EtapaIncompletaError(
+                {
+                    'detail': 'No se puede finalizar el Examen de Grado. Falta el Acta Final del Examen de Grado aprobada.',
+                }
+            )
+
+        postulacion.estado_general = 'FINALIZADA'
+        postulacion.save(update_fields=['estado_general'])
+        if estado_general_anterior != postulacion.estado_general:
+            registrar_auditoria(
+                usuario=actor,
+                accion='CAMBIO_ESTADO_GENERAL',
+                modelo_afectado='Postulacion',
+                objeto_id=postulacion.id,
+                estado_anterior={'estado_general': estado_general_anterior},
+                estado_nuevo={'estado_general': postulacion.estado_general},
+                detalles={'motivo': 'finalizacion_examen_grado'},
+            )
+        return postulacion
+
     missing_docs = required_documents_missing(postulacion)
     if missing_docs:
         missing_names = [item['nombre'] for item in missing_docs]
@@ -118,35 +146,6 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
     )
 
     if next_stage is None:
-        if es_modalidad_examen_grado(postulacion) and (
-            (postulacion.etapa_actual.nombre or '').strip().upper() == ACTA_FINAL_EXAMEN_GRADO_ETAPA_NOMBRE
-        ):
-            has_acta_final = DocumentoPostulacion.objects.filter(
-                postulacion_id=postulacion.id,
-                tipo_documento__nombre__iexact=ACTA_FINAL_EXAMEN_GRADO_NOMBRE,
-                estado='aprobado',
-            ).exists()
-            if not has_acta_final:
-                raise EtapaIncompletaError(
-                    {
-                        'detail': 'No se puede finalizar el Examen de Grado. Falta el Acta Final del Examen de Grado aprobada.',
-                    }
-                )
-
-            postulacion.estado_general = 'FINALIZADA'
-            postulacion.save(update_fields=['estado_general'])
-            if estado_general_anterior != postulacion.estado_general:
-                registrar_auditoria(
-                    usuario=actor,
-                    accion='CAMBIO_ESTADO_GENERAL',
-                    modelo_afectado='Postulacion',
-                    objeto_id=postulacion.id,
-                    estado_anterior={'estado_general': estado_general_anterior},
-                    estado_nuevo={'estado_general': postulacion.estado_general},
-                    detalles={'motivo': 'finalizacion_examen_grado'},
-                )
-            return postulacion
-
         if requiere_acta_defensa_para_titulado(postulacion):
             has_acta_defensa = DocumentoPostulacion.objects.filter(
                 postulacion_id=postulacion.id,

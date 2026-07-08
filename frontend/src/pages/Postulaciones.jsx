@@ -316,6 +316,9 @@ const Postulaciones = () => {
       key: 'etapa_actual',
       label: 'Etapa Actual',
       render: (_, row) => {
+        if (row.estado_general === 'FINALIZADA') {
+          return 'Modalidad Finalizada';
+        }
         return row.etapa_actual?.nombre || row.etapa_nombre || 'Sin etapa';
       },
     },

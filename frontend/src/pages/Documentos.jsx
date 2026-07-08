@@ -23,11 +23,18 @@ const INITIAL_FORM_DATA = {
   comentario_revision: '',
 };
 
+const BLOCKED_STAGE_ERROR_MESSAGE = 'Solo es posible subir documentos durante la etapa de Registro. Las actas de evaluación son registradas por la administración de la Carrera.';
+
 const ESTADO_DOCUMENTO_OPTIONS = [
   { label: 'Pendiente', value: 'pendiente' },
   { label: 'Aprobado', value: 'aprobado' },
   { label: 'Rechazado', value: 'rechazado' },
 ];
+
+const normalizeErrorMessage = (message) => {
+  if (typeof message !== 'string') return message;
+  return message.replace(/^detail:\s*/i, '').trim();
+};
 
 const Documentos = () => {
   const {
@@ -245,6 +252,7 @@ const Documentos = () => {
         : API_CONFIG.ENDPOINTS.DOCUMENTOS;
 
       let result;
+      const suppressToast = isStudent;
 
       if (archivoFile) {
         // Con archivo, usar FormData a través de api.js para que gestione headers correctamente
@@ -258,8 +266,8 @@ const Documentos = () => {
         }
 
         result = isEditMode
-          ? await api.update(endpoint, payload)
-          : await api.create(endpoint, payload);
+          ? await api.update(endpoint, payload, { suppressErrorToast: suppressToast })
+          : await api.create(endpoint, payload, { suppressErrorToast: suppressToast });
       } else {
         // Sin archivo, usar JSON
         const payload = {
@@ -270,8 +278,8 @@ const Documentos = () => {
         };
 
         result = isEditMode
-          ? await patch(endpoint, payload)
-          : await create(payload);
+          ? await patch(endpoint, payload, { suppressErrorToast: suppressToast })
+          : await create(payload, { suppressErrorToast: suppressToast });
       }
 
       if (result.success) {
@@ -280,10 +288,18 @@ const Documentos = () => {
         setArchivoFile(null);
         closeModal();
       } else {
-        setError(result.error || 'Error en la operación');
+        const errorMessage = normalizeErrorMessage(result.error || 'Error en la operación');
+        setError(errorMessage);
+
+        const isBlockedStageError = isStudent && typeof errorMessage === 'string' && errorMessage.includes(BLOCKED_STAGE_ERROR_MESSAGE);
+
+        if (isBlockedStageError) {
+          setArchivoFile(null);
+          closeModal();
+        }
       }
     } catch (err) {
-      setError(err.message || 'Error en la operación');
+      setError(normalizeErrorMessage(err.message || 'Error en la operación'));
     } finally {
       setIsSubmitting(false);
     }
@@ -329,10 +345,10 @@ const Documentos = () => {
         setSuccess('Documento eliminado exitosamente');
         await refresh({});
       } else {
-        setError(result.error || 'Error al eliminar');
+        setError(normalizeErrorMessage(result.error || 'Error al eliminar'));
       }
     } catch (err) {
-      setError('Error al eliminar documento');
+      setError(normalizeErrorMessage('Error al eliminar documento'));
     }
   };
 
