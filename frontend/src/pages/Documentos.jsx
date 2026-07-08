@@ -66,6 +66,7 @@ const Documentos = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewDocumento, setPreviewDocumento] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [previewExtension, setPreviewExtension] = useState('');
   
   const { isOpen, isEditMode, formData, openModal, closeModal, setFormData } = useModal(
     INITIAL_FORM_DATA
@@ -168,16 +169,16 @@ const Documentos = () => {
       const file = files?.[0] || null;
       if (file) {
         // Validar extensión permitida
-        const extensionesPermitidas = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+        const extensionesPermitidas = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'];
         const extension = file.name.split('.').pop().toLowerCase();
         if (!extensionesPermitidas.includes(extension)) {
           setError(`Extensión no permitida. Use: ${extensionesPermitidas.join(', ')}`);
           return;
         }
-        // Validar tamaño máximo (5MB)
-        const MAX_SIZE = 5 * 1024 * 1024;
+        // Validar tamaño máximo (25MB)
+        const MAX_SIZE = 25 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
-          setError('El archivo no debe exceder 5MB');
+          setError('El archivo no debe exceder 25MB');
           return;
         }
       }
@@ -339,12 +340,12 @@ const Documentos = () => {
     const archivoUrl = documento?.archivo_url;
     if (!archivoUrl) return;
 
-    // Construir URL completa del archivo usando PUBLIC_SERVER_URL
+    const extension = archivoUrl.split('.').pop().toLowerCase();
     const urlCompleta = new URL(archivoUrl, API_CONFIG.PUBLIC_SERVER_URL).toString();
-    
-    // Abrir en modal de preview
+
     setPreviewDocumento(documento);
     setPreviewUrl(urlCompleta);
+    setPreviewExtension(extension);
     setIsPreviewOpen(true);
   };
 
@@ -352,6 +353,7 @@ const Documentos = () => {
     setIsPreviewOpen(false);
     setPreviewDocumento(null);
     setPreviewUrl('');
+    setPreviewExtension('');
   };
 
   const getEstadoBadge = (estado) => {
@@ -579,7 +581,7 @@ const Documentos = () => {
                     name="archivo"
                     onChange={handleInputChange}
                     required={!isEditMode}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                     className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                   {archivoFile && (
@@ -613,11 +615,30 @@ const Documentos = () => {
               {/* Content */}
               <div className="relative overflow-hidden rounded-b-3xl border-t border-gray-200 dark:border-gray-700">
                 {previewUrl ? (
-                  <iframe
-                    title="Vista previa del documento"
-                    src={previewUrl}
-                    className="h-[72vh] w-full bg-neutral-100 dark:bg-neutral-950"
-                  />
+                  ['pdf'].includes(previewExtension) ? (
+                    <iframe
+                      title="Vista previa del documento"
+                      src={previewUrl}
+                      className="h-[72vh] w-full bg-neutral-100 dark:bg-neutral-950"
+                    />
+                  ) : (
+                    <div className="flex min-h-[72vh] flex-col items-center justify-center gap-4 p-8 text-center">
+                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Vista previa no disponible para este formato.
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Puedes descargar el archivo para verlo en tu aplicación de escritorio.
+                      </p>
+                      <a
+                        href={previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        Abrir archivo
+                      </a>
+                    </div>
+                  )
                 ) : (
                   <div className="flex h-96 items-center justify-center">
                     <p className="text-gray-500 dark:text-gray-400">Cargando documento...</p>
