@@ -2,7 +2,8 @@ from django.db import transaction
 from rest_framework import serializers
 
 from auditoria.services import registrar_auditoria
-from documentos.models import DocumentoPostulacion, TipoDocumento
+from django.db.models import Q
+from documentos.models import DocumentoPostulacion, TipoDocumento, ModalidadTipoDocumento
 from modalidades.models import Etapa
 
 from .models import Postulacion
@@ -34,22 +35,31 @@ def required_documents_missing(postulacion: Postulacion) -> list[dict]:
     etapa = postulacion.etapa_actual
     if not etapa:
         return []
+    # Usar la configuración de ModalidadTipoDocumento (documentos por modalidad y etapa)
+    mtd_qs = ModalidadTipoDocumento.objects.filter(
+        modalidad_id=postulacion.modalidad_id,
+        obligatorio=True,
+        activo=True,
+    ).filter(Q(etapa_id=etapa.id) | Q(etapa__isnull=True))
 
-    required_types = list(
-        TipoDocumento.objects.filter(etapa_id=etapa.id, obligatorio=True, activo=True).values('id', 'nombre')
-    )
-    if not required_types:
+    if not mtd_qs.exists():
         return []
 
-    required_ids = [item['id'] for item in required_types]
-    approved_ids = set(
-        DocumentoPostulacion.objects.filter(
-            postulacion_id=postulacion.id,
-            tipo_documento_id__in=required_ids,
-            estado='aprobado',
-        ).values_list('tipo_documento_id', flat=True)
-    )
-    return [item for item in required_types if item['id'] not in approved_ids]
+    missing: list[dict] = []
+    # Para cada tipo requerido, comprobar que exista un DocumentoPostulacion aprobado
+    for mtd in mtd_qs.select_related('tipo_documento'):
+        tipo = mtd.tipo_documento
+        # ¿se cargó algún documento de este tipo para la postulación?
+        docs = DocumentoPostulacion.objects.filter(postulacion_id=postulacion.id, tipo_documento_id=tipo.id)
+        if not docs.exists():
+            missing.append({'id': tipo.id, 'nombre': tipo.nombre, 'motivo': 'no_cargado'})
+            continue
+        # Hay al menos uno cargado; verificar que alguno esté aprobado
+        aprobado = docs.filter(estado='aprobado').exists()
+        if not aprobado:
+            missing.append({'id': tipo.id, 'nombre': tipo.nombre, 'motivo': 'no_aprobado'})
+
+    return missing
 
 
 @transaction.atomic
@@ -72,7 +82,7 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
         missing_names = [item['nombre'] for item in missing_docs]
         raise EtapaIncompletaError(
             {
-                'detail': 'No se puede avanzar de etapa: faltan documentos obligatorios aprobados.',
+                'detail': 'Existen documentos obligatorios pendientes o no aprobados.',
                 'faltantes': missing_names,
             }
         )

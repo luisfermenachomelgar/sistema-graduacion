@@ -403,16 +403,6 @@ const Documentos = () => {
       },
     },
     {
-      key: 'etapa_nombre',
-      label: 'Etapa',
-      sortable: true,
-      render: (value) => (
-        <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-          {value || '-'}
-        </span>
-      ),
-    },
-    {
       key: 'estado',
       label: 'Estado',
       sortable: true,
@@ -426,7 +416,14 @@ const Documentos = () => {
       key: 'comentario_revision',
       label: 'Comentario',
       sortable: false,
-      render: (value) => value ? value.substring(0, 50) + '...' : '-',
+      render: (value) => {
+        const text = value?.toString().trim();
+        return (
+          <span className="max-w-xs whitespace-normal break-words text-sm text-gray-700 dark:text-gray-300">
+            {text || '-'}
+          </span>
+        );
+      },
     },
   ];
 

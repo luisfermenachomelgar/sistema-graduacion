@@ -107,6 +107,21 @@ class PostulacionViewSet(viewsets.ModelViewSet):
             return queryset
         return queryset.filter(postulante__usuario=self.request.user)
 
+    def perform_create(self, serializer):
+        """
+        Para la modalidad EXAMEN DE GRADO, garantizar que la postulación
+        se cree en la etapa inicial (orden=1). No modificar flujo de documentos.
+        """
+        modalidad_obj = serializer.validated_data.get('modalidad')
+        if modalidad_obj and getattr(modalidad_obj, 'nombre', None):
+            if modalidad_obj.nombre.strip().upper() == 'EXAMEN DE GRADO':
+                etapa_inicial = Etapa.objects.filter(modalidad=modalidad_obj, orden=1, activo=True).first()
+                if etapa_inicial:
+                    serializer.save(etapa_actual=etapa_inicial)
+                    return
+
+        serializer.save()
+
     @action(
         detail=True,
         methods=['post'],

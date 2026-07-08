@@ -118,7 +118,7 @@ const DataTable = ({
                   onClick={() => column.sortable && handleSort(column.key)}
                   className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400 ${
                     column.sortable ? 'cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-800/80' : ''
-                  }`}
+                  } ${column.hideHeader ? 'hidden' : ''}`}
                 >
                   <div className="flex items-center gap-2">
                     {column.label}
@@ -127,8 +127,8 @@ const DataTable = ({
                 </th>
               ))}
               {(onEdit || onView || onDelete) && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-center">Acciones</div>
                 </th>
               )}
             </tr>
@@ -149,8 +149,8 @@ const DataTable = ({
                     </td>
                   ))}
                   {(onEdit || onView || onDelete) && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm flex justify-center items-center">
+                      <div className="flex items-center gap-3">
                         {onView && (
                           <button
                             type="button"
