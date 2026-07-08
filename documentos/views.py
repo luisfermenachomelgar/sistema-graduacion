@@ -2,6 +2,8 @@ from rest_framework import filters, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.conf import settings
+
+BLOCKED_DOCUMENT_MESSAGE = 'Solo es posible subir documentos durante la etapa de Registro. Las actas de evaluación son registradas por la administración de la Carrera.'
 from django.core.mail import send_mail
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
@@ -50,6 +52,51 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Crear o reutilizar documento existente para reenvío por estudiante."""
+        user = request.user
+        is_privileged = bool(
+            user and (user.has_perm('documentos.change_documentopostulacion') or can_view_all_documentos(user))
+        )
+
+        if not is_privileged:
+            postulacion_id = request.data.get('postulacion')
+            tipo_documento_id = request.data.get('tipo_documento')
+            try:
+                postulacion_id = int(postulacion_id) if postulacion_id is not None else None
+            except Exception:
+                postulacion_id = None
+            try:
+                tipo_documento_id = int(tipo_documento_id) if tipo_documento_id is not None else None
+            except Exception:
+                tipo_documento_id = None
+
+            if postulacion_id:
+                postulacion = Postulacion.objects.select_related('etapa_actual').filter(id=postulacion_id).first()
+                if postulacion:
+                    etapa_actual = getattr(postulacion.etapa_actual, 'nombre', '') or ''
+                    etapa_actual_norm = etapa_actual.strip().upper()
+                    if etapa_actual_norm != 'REGISTRO':
+                        return Response(
+                            {
+                                'detail': BLOCKED_DOCUMENT_MESSAGE,
+                                'error': BLOCKED_DOCUMENT_MESSAGE,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    tipo_documento_name = ''
+                    if tipo_documento_id:
+                        tipo_documento_name = (
+                            TipoDocumento.objects.filter(id=tipo_documento_id).values_list('nombre', flat=True).first() or ''
+                        )
+                    if tipo_documento_name and 'ACTA' in tipo_documento_name.upper():
+                        return Response(
+                            {
+                                'detail': BLOCKED_DOCUMENT_MESSAGE,
+                                'error': BLOCKED_DOCUMENT_MESSAGE,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
         postulacion_id = request.data.get('postulacion')
         tipo_documento_id = request.data.get('tipo_documento')
         try:
@@ -69,24 +116,6 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
             matching = DocumentoPostulacion.objects.filter(
                 postulacion_id=postulacion_id, tipo_documento_id=tipo_documento_id
             )
-            print(
-                'DEBUG_CREATE lookup',
-                'postulacion_id=', postulacion_id,
-                'tipo_documento_id=', tipo_documento_id,
-                'exists=', bool(existente),
-                'count=', matching.count(),
-                'ids=', list(matching.values_list('id', flat=True)),
-            )
-            if existente:
-                print('DEBUG_CREATE: existente id=', existente.id, 'estado=', existente.estado)
-
-        print('DEBUG_CREATE start', 'keys', list(request.data.keys()), 'FILES', list(request.FILES.keys()))
-        print('DEBUG_CREATE values', 'postulacion', request.data.get('postulacion'), 'tipo_documento', request.data.get('tipo_documento'))
-
-        user = request.user
-        is_privileged = bool(
-            user and (user.has_perm('documentos.change_documentopostulacion') or can_view_all_documentos(user))
-        )
 
         if existente:
             if not is_privileged:

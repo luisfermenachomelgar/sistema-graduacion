@@ -10,16 +10,18 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
+  const getUserRole = () => user?.role || (user?.is_superuser ? 'admin' : null);
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return null;
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (location.pathname === '/dashboard' && getUserRole() === 'estudiante') {
+    return <Navigate to="/postulaciones" replace />;
   }
 
   /**

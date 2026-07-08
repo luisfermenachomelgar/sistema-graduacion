@@ -6,6 +6,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import AdminLayout from '../layouts/AdminLayout';
+import useAuth from '../hooks/useAuth';
 
 // Pages
 import Login from '../pages/Login';
@@ -17,6 +18,21 @@ import Modalidades from '../pages/Modalidades';
 import ModalidadDetalle from '../pages/ModalidadDetalle';
 import Usuarios from '../pages/Usuarios';
 import Reportes from '../pages/Reportes';
+
+const InitialRedirect = () => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const userRole = user?.role || (user?.is_superuser ? 'admin' : null);
+  return <Navigate to={userRole === 'estudiante' ? '/postulaciones' : '/dashboard'} replace />;
+};
 
 const AppRouter = () => {
   return (
@@ -114,11 +130,11 @@ const AppRouter = () => {
           }
         />
 
-        {/* Redirect root to dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Redirect root based on role */}
+        <Route path="/" element={<InitialRedirect />} />
 
         {/* 404 Not Found */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<InitialRedirect />} />
       </Routes>
     </Router>
   );

@@ -33,7 +33,8 @@ const Login = () => {
     const result = await login(username, password);
 
     if (result.success) {
-      navigate('/dashboard');
+      const targetPath = result.user?.role === 'estudiante' ? '/postulaciones' : '/dashboard';
+      navigate(targetPath);
     } else {
       setError(result.error || 'Login failed');
     }
