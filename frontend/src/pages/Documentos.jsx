@@ -14,7 +14,7 @@ import Alert from '../components/Alert';
 import { PageHeader, SectionCard } from '../components';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
-import { Plus, AlertCircle, X } from 'lucide-react';
+import { Plus, AlertCircle, X, Upload, Trash2 } from 'lucide-react';
 
 const INITIAL_FORM_DATA = {
   postulacion: '',
@@ -30,6 +30,29 @@ const ESTADO_DOCUMENTO_OPTIONS = [
   { label: 'Aprobado', value: 'aprobado' },
   { label: 'Rechazado', value: 'rechazado' },
 ];
+
+// Documentos que NO debe ver el estudiante
+const RESTRICTED_DOCUMENT_KEYWORDS = [
+  'acta',
+  'dictamen',
+  'resolución',
+  'dictámen', // variante sin tilde
+  'acta de',
+  'evaluación',
+  'calificación final',
+];
+
+// Función para determinar si un documento es permitido para estudiante
+const isDocumentAllowedForStudent = (documentName) => {
+  if (!documentName || typeof documentName !== 'string') return false;
+  
+  const lowerName = documentName.toLowerCase().trim();
+  
+  // Excluir documentos internos de la universidad
+  return !RESTRICTED_DOCUMENT_KEYWORDS.some((keyword) =>
+    lowerName.includes(keyword.toLowerCase())
+  );
+};
 
 const normalizeErrorMessage = (message) => {
   if (typeof message !== 'string') return message;
@@ -69,6 +92,9 @@ const Documentos = () => {
   const [etapaActualNombre, setEtapaActualNombre] = useState('');
   const [etapas, setEtapas] = useState([]);
   
+  // Para administradores: mapea tipo_documento_id -> { file, fileName }
+  const [selectedDocuments, setSelectedDocuments] = useState({});
+  
   // Modal de preview para visualizar PDFs
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewDocumento, setPreviewDocumento] = useState(null);
@@ -89,6 +115,7 @@ const Documentos = () => {
     // Limpiar estado cuando se cierre el modal
     if (!isOpen) {
       setEtapaActualNombre('');
+      setSelectedDocuments({});
     }
   }, [isOpen]);
 
@@ -206,6 +233,44 @@ const Documentos = () => {
 
   const handleInputChange = async (e) => {
     const { name, value, files } = e.target;
+    
+    // Manejo de archivos para administradores (múltiples documentos)
+    if (name.startsWith('archivo_')) {
+      const tipoDocId = parseInt(name.split('_')[1], 10);
+      const file = files?.[0] || null;
+      
+      if (file) {
+        // Validar extensión permitida
+        const extensionesPermitidas = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'];
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!extensionesPermitidas.includes(extension)) {
+          setError(`Extensión no permitida. Use: ${extensionesPermitidas.join(', ')}`);
+          return;
+        }
+        // Validar tamaño máximo (25MB)
+        const MAX_SIZE = 25 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+          setError('El archivo no debe exceder 25MB');
+          return;
+        }
+        
+        setSelectedDocuments((prev) => ({
+          ...prev,
+          [tipoDocId]: { file, fileName: file.name },
+        }));
+      } else {
+        // Si se limpia el archivo, eliminar del objeto
+        setSelectedDocuments((prev) => {
+          const updated = { ...prev };
+          delete updated[tipoDocId];
+          return updated;
+        });
+      }
+      setError('');
+      return;
+    }
+    
+    // Manejo de archivo único para estudiantes
     if (name === 'archivo') {
       const file = files?.[0] || null;
       if (file) {
@@ -244,6 +309,7 @@ const Documentos = () => {
           ...prev,
           tipo_documento: '',
         }));
+        setSelectedDocuments({});
         return;
       }
 
@@ -265,12 +331,14 @@ const Documentos = () => {
           ...prev,
           tipo_documento: '',
         }));
+        setSelectedDocuments({});
       } else {
         setTiposDocumentoFiltrados([]);
         setFormData((prev) => ({
           ...prev,
           tipo_documento: '',
         }));
+        setSelectedDocuments({});
       }
     }
   };
@@ -281,6 +349,73 @@ const Documentos = () => {
     setSuccess('');
 
     try {
+      // Para administradores y estudiantes: crear múltiples documentos
+      if (Object.keys(selectedDocuments).length > 0) {
+        const postulacionId = formData.postulacion;
+        if (!postulacionId) {
+          setError('Debes seleccionar una postulación');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const documentos = Object.entries(selectedDocuments).map(([tipoDocId, data]) => ({
+          tipoDocId: parseInt(tipoDocId, 10),
+          file: data.file,
+        }));
+
+        if (documentos.length === 0) {
+          setError('Debes seleccionar al menos un archivo');
+          setIsSubmitting(false);
+          return;
+        }
+
+        let successCount = 0;
+        const errors = [];
+
+        // Enviar un request por cada documento
+        for (const doc of documentos) {
+          try {
+            const payload = new FormData();
+            payload.append('postulacion', postulacionId);
+            payload.append('tipo_documento', doc.tipoDocId);
+            payload.append('estado', formData.estado || 'pendiente');
+            payload.append('archivo', doc.file);
+            if (formData.comentario_revision) {
+              payload.append('comentario_revision', formData.comentario_revision);
+            }
+
+            const endpoint = API_CONFIG.ENDPOINTS.DOCUMENTOS;
+            const result = await api.create(endpoint, payload, { suppressErrorToast: true });
+
+            if (result.success) {
+              successCount++;
+            } else {
+              errors.push(normalizeErrorMessage(result.error || 'Error desconocido'));
+            }
+          } catch (err) {
+            errors.push(normalizeErrorMessage(err.message || 'Error en la creación'));
+          }
+        }
+
+        if (successCount > 0) {
+          setSuccess(`${successCount} documento(s) creado(s) exitosamente${errors.length > 0 ? ` (${errors.length} error(es))` : ''}`);
+          await refresh({});
+          setSelectedDocuments({});
+          setArchivoFile(null);
+          closeModal();
+        }
+
+        if (errors.length > 0) {
+          if (successCount === 0) {
+            setError(errors[0]);
+          }
+        }
+
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Para estudiantes: crear un único documento (comportamiento original)
       const endpoint = isEditMode
         ? API_CONFIG.ENDPOINTS.DOCUMENTO_DETAIL(formData.id)
         : API_CONFIG.ENDPOINTS.DOCUMENTOS;
@@ -644,73 +779,181 @@ const Documentos = () => {
                   className="md:col-span-1"
                 />
 
-                <FormField
-                  label="Tipo de Documento *"
-                  name="tipo_documento"
-                  type="select"
-                  value={formData.tipo_documento}
-                  onChange={handleInputChange}
-                  options={(formData.postulacion ? tiposDocumentoFiltrados : []).map((t) => ({
-                    id: t.id,
-                    label: t.label || t.nombre,
-                  }))}
-                  required
-                  className="md:col-span-1"
-                />
-                {formData.postulacion && tiposDocumentoFiltrados.length === 0 && (
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 md:col-span-1">
-                    No hay tipos de documento configurados para la modalidad y etapa actual de esta postulación.
-                  </p>
+                {/* En modo edición: mostrar select tradicional */}
+                {isEditMode && (
+                  <>
+                    <FormField
+                      label="Tipo de Documento *"
+                      name="tipo_documento"
+                      type="select"
+                      value={formData.tipo_documento}
+                      onChange={handleInputChange}
+                      options={(formData.postulacion ? tiposDocumentoFiltrados : []).map((t) => ({
+                        id: t.id,
+                        label: t.label || t.nombre,
+                      }))}
+                      required
+                      className="md:col-span-1"
+                    />
+                    {formData.postulacion && tiposDocumentoFiltrados.length === 0 && (
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 md:col-span-1">
+                        No hay tipos de documento configurados para la modalidad y etapa actual de esta postulación.
+                      </p>
+                    )}
+
+                    {!isStudent && (
+                      <FormField
+                        label="Estado"
+                        name="estado"
+                        type="select"
+                        value={formData.estado}
+                        onChange={handleInputChange}
+                        options={ESTADO_DOCUMENTO_OPTIONS}
+                        className="md:col-span-2"
+                      />
+                    )}
+                  </>
                 )}
 
-                {!isStudent && (
-                  <FormField
-                    label="Estado"
-                    name="estado"
-                    type="select"
-                    value={formData.estado}
-                    onChange={handleInputChange}
-                    options={ESTADO_DOCUMENTO_OPTIONS}
-                    className="md:col-span-2"
-                  />
+                {/* Para administradores en modo creación: mostrar Estado */}
+                {!isStudent && !isEditMode && (
+                  <>
+                    <FormField
+                      label="Estado"
+                      name="estado"
+                      type="select"
+                      value={formData.estado}
+                      onChange={handleInputChange}
+                      options={ESTADO_DOCUMENTO_OPTIONS}
+                      className="md:col-span-2"
+                    />
+                  </>
                 )}
               </div>
             </SectionCard>
 
-            <SectionCard
-              title="Revisión y archivo"
-              description="Comentario opcional para revisión y carga del archivo físico."
-            >
-              <div className="grid grid-cols-1 gap-4">
-                <FormField
-                  label="Comentario de Revisión"
-                  name="comentario_revision"
-                  type="textarea"
-                  value={formData.comentario_revision || ''}
-                  onChange={handleInputChange}
-                  placeholder="Agregar comentarios si es necesario..."
-                />
+            {/* Para administradores y estudiantes: lista de documentos con selectores de archivo */}
+            {!isEditMode && formData.postulacion && tiposDocumentoFiltrados.length > 0 && (
+              <SectionCard
+                title="Documentos a cargar"
+                description="Selecciona los archivos que deseas cargar. Solo se guardarán los documentos que tengan archivo."
+              >
+                <div className="space-y-3">
+                  {tiposDocumentoFiltrados
+                    .filter((tipoDoc) =>
+                      isStudent ? isDocumentAllowedForStudent(tipoDoc.label || tipoDoc.nombre) : true
+                    )
+                    .map((tipoDoc) => (
+                    <div
+                      key={tipoDoc.id}
+                      className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
+                    >
+                      {/* Nombre del documento */}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {tipoDoc.label || tipoDoc.nombre}
+                        </p>
+                        {selectedDocuments[tipoDoc.id]?.fileName && (
+                          <p className="text-xs text-green-600 dark:text-green-400">
+                            ✓ {selectedDocuments[tipoDoc.id].fileName}
+                          </p>
+                        )}
+                      </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Archivo de Documento *
-                  </label>
-                  <input
-                    type="file"
-                    name="archivo"
-                    onChange={handleInputChange}
-                    required={!isEditMode}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-                  />
-                  {archivoFile && (
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                      Archivo seleccionado: {archivoFile.name}
-                    </p>
-                  )}
+                      {/* Selector de archivo */}
+                      <div className="flex gap-2">
+                        <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                          <Upload className="h-4 w-4" />
+                          <span>Seleccionar</span>
+                          <input
+                            type="file"
+                            name={`archivo_${tipoDoc.id}`}
+                            onChange={handleInputChange}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                            className="hidden"
+                          />
+                        </label>
+
+                        {/* Botón para quitar/cambiar */}
+                        {selectedDocuments[tipoDoc.id] && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDocuments((prev) => {
+                                const updated = { ...prev };
+                                delete updated[tipoDoc.id];
+                                return updated;
+                              });
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Quitar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                {Object.keys(selectedDocuments).length === 0 && (
+                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+                    Selecciona al menos un archivo para guardar.
+                  </div>
+                )}
+              </SectionCard>
+            )}
+
+            {!isEditMode && isStudent && formData.postulacion && tiposDocumentoFiltrados.length > 0 && 
+              tiposDocumentoFiltrados.filter((d) => isDocumentAllowedForStudent(d.label || d.nombre)).length === 0 && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                No tienes documentos que entregar en esta etapa. Los documentos internos de la universidad son registrados por la administración.
               </div>
-            </SectionCard>
+            )}
+
+            {!isEditMode && formData.postulacion && tiposDocumentoFiltrados.length === 0 && (
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+                No hay tipos de documento configurados para la modalidad y etapa actual de esta postulación.
+              </div>
+            )}
+
+            {/* Para modo edición: mostrar sección de revisión y archivo */}
+            {isEditMode && (
+              <SectionCard
+                title="Revisión y archivo"
+                description="Comentario opcional para revisión y carga del archivo físico."
+              >
+                <div className="grid grid-cols-1 gap-4">
+                  <FormField
+                    label="Comentario de Revisión"
+                    name="comentario_revision"
+                    type="textarea"
+                    value={formData.comentario_revision || ''}
+                    onChange={handleInputChange}
+                    placeholder="Agregar comentarios si es necesario..."
+                  />
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Archivo de Documento *
+                    </label>
+                    <input
+                      type="file"
+                      name="archivo"
+                      onChange={handleInputChange}
+                      required={!isEditMode}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                    />
+                    {archivoFile && (
+                      <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                        Archivo seleccionado: {archivoFile.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </SectionCard>
+            )}
           </div>
         </Modal>
 
