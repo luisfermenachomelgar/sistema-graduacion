@@ -368,63 +368,65 @@ const Postulaciones = () => {
       {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <input
-          type="text"
-          placeholder="Buscar por título, postulante..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
-        />
-        <div className="w-full sm:w-auto">
-          <select
-            value={filterEstado}
-            onChange={(e) => {
-              setFilterEstado(e.target.value);
-              setPage(1);
-            }}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
-          >
-            <option value="">Todas las postulaciones</option>
-            {ESTADO_OPTIONS.map((op) => (
-              <option key={op.value} value={op.value}>
-                {op.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-44">
+      {!isStudent && (
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <input
-            type="number"
-            min="2000"
-            max="2100"
-            placeholder="Año académico"
-            value={filterAnioAcademico}
+            type="text"
+            placeholder="Buscar por título, postulante..."
+            value={search}
             onChange={(e) => {
-              setFilterAnioAcademico(e.target.value);
+              setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
           />
+          <div className="w-full sm:w-auto">
+            <select
+              value={filterEstado}
+              onChange={(e) => {
+                setFilterEstado(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Todas las postulaciones</option>
+              {ESTADO_OPTIONS.map((op) => (
+                <option key={op.value} value={op.value}>
+                  {op.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-full sm:w-44">
+            <input
+              type="number"
+              min="2000"
+              max="2100"
+              placeholder="Año académico"
+              value={filterAnioAcademico}
+              onChange={(e) => {
+                setFilterAnioAcademico(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
+          </div>
+          <div className="w-full sm:w-44">
+            <select
+              value={filterSemestreAcademico}
+              onChange={(e) => {
+                setFilterSemestreAcademico(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Semestre</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
         </div>
-        <div className="w-full sm:w-44">
-          <select
-            value={filterSemestreAcademico}
-            onChange={(e) => {
-              setFilterSemestreAcademico(e.target.value);
-              setPage(1);
-            }}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
-          >
-            <option value="">Semestre</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-          </select>
-        </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-96 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -579,7 +581,14 @@ const Postulaciones = () => {
                 options={
                   formData.modalidad
                     ? etapas
-                        .filter((etapa) => formData.modalidad && etapa.modalidad === formData.modalidad)
+                        .filter((etapa) => {
+                          if (!formData.modalidad) return false;
+                          // Filtrar por modalidad y ocultar etapas inválidas/legacy
+                          const matchesModalidad = etapa.modalidad === formData.modalidad;
+                          const nombreNormalized = (etapa.nombre || '').toString().trim().toUpperCase();
+                          const isLegacyExamen1 = nombreNormalized === 'EXAMEN 1';
+                          return matchesModalidad && !isLegacyExamen1;
+                        })
                         .map((etapa) => ({ id: etapa.id, label: etapa.nombre }))
                     : []
                 }

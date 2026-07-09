@@ -6,7 +6,11 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends netcat-openbsd \
+    && apt-get install -y --no-install-recommends \
+       netcat-openbsd \
+       libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-common \
+       fonts-dejavu-core fonts-dejavu-extra \
+       libxrender1 libxext6 libx11-6 fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

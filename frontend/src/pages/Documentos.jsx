@@ -92,6 +92,40 @@ const Documentos = () => {
     }
   }, [isOpen]);
 
+  // Cuando se abre el modal para crear un nuevo documento, si el usuario
+  // es estudiante y solo tiene una postulación, seleccionala automáticamente
+  // y carga los tipos de documento correspondientes.
+  useEffect(() => {
+    const autoSelectSinglePostulacion = async () => {
+      if (!isOpen) return;
+      if (isEditMode) return; // No tocar cuando estamos editando
+      if (!isStudent) return;
+      if (!postulaciones || postulaciones.length !== 1) return;
+
+      const single = postulaciones[0];
+      if (single && formData.postulacion !== single.id) {
+        setFormData((prev) => ({ ...prev, postulacion: single.id }));
+
+        const modalidadId = single?.modalidad?.id || single?.modalidad;
+        const etapaId = single?.etapa_actual || undefined;
+
+        if (etapaId) {
+          const etapaSeleccionada = etapas.find((e) => e.id === etapaId);
+          setEtapaActualNombre(etapaSeleccionada?.nombre || '');
+        } else {
+          setEtapaActualNombre('');
+        }
+
+        if (modalidadId) {
+          await getTiposDocumentoFiltrados(modalidadId, etapaId);
+        }
+      }
+    };
+
+    autoSelectSinglePostulacion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, postulaciones, isStudent, isEditMode, etapas]);
+
   const fetchDropdownData = async () => {
     try {
       const [tiposRes, postRes, etapaRes] = await Promise.all([
@@ -354,10 +388,12 @@ const Documentos = () => {
 
   const handleView = (documento) => {
     const archivoUrl = documento?.archivo_url;
-    if (!archivoUrl) return;
+    const previewPdfUrl = documento?.preview_pdf_url;
+    const chosenUrl = previewPdfUrl || archivoUrl;
+    if (!chosenUrl) return;
 
-    const extension = archivoUrl.split('.').pop().toLowerCase();
-    const urlCompleta = new URL(archivoUrl, API_CONFIG.PUBLIC_SERVER_URL).toString();
+    const extension = chosenUrl.split('.').pop().toLowerCase();
+    const urlCompleta = new URL(chosenUrl, API_CONFIG.PUBLIC_SERVER_URL).toString();
 
     setPreviewDocumento(documento);
     setPreviewUrl(urlCompleta);
@@ -370,6 +406,63 @@ const Documentos = () => {
     setPreviewDocumento(null);
     setPreviewUrl('');
     setPreviewExtension('');
+  };
+
+  // Render preview content for different file types
+  const renderPreviewContent = () => {
+    if (!previewUrl) {
+      return (
+        <div className="flex h-96 items-center justify-center">
+          <p className="text-gray-500 dark:text-gray-400">Cargando documento...</p>
+        </div>
+      );
+    }
+
+    const imgExt = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    const textExt = ['txt', 'csv', 'md', 'json', 'xml'];
+
+    if (['pdf'].includes(previewExtension)) {
+      return (
+        <iframe
+          title="Vista previa del documento"
+          src={previewUrl}
+          className="h-[72vh] w-full bg-neutral-100 dark:bg-neutral-950"
+        />
+      );
+    }
+
+    if (imgExt.includes(previewExtension)) {
+      return (
+        <div className="flex h-[72vh] w-full items-center justify-center bg-neutral-100 dark:bg-neutral-950 p-4">
+          <img src={previewUrl} alt={previewDocumento?.tipo_documento_nombre || 'Documento'} className="max-h-full max-w-full object-contain" />
+        </div>
+      );
+    }
+
+    if (textExt.includes(previewExtension)) {
+      return (
+        <iframe
+          title="Vista previa del documento"
+          src={previewUrl}
+          className="h-[72vh] w-full bg-neutral-100 dark:bg-neutral-950"
+        />
+      );
+    }
+
+    return (
+      <div className="flex min-h-[72vh] flex-col items-center justify-center gap-4 p-8 text-center">
+        <p className="text-lg font-semibold text-gray-900 dark:text-white">Vista previa no disponible para este formato.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Puedes descargar el archivo o abrirlo en una aplicación de escritorio para verlo correctamente.</p>
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+        >
+          Abrir archivo
+        </a>
+      </div>
+    );
   };
 
   const getEstadoBadge = (estado) => {
@@ -513,19 +606,32 @@ const Documentos = () => {
               description="Postulación asociada, tipo de documento y estado de revisión."
             >
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-                <FormField
-                  label="Postulación *"
-                  name="postulacion"
-                  type="select"
-                  value={formData.postulacion}
-                  onChange={handleInputChange}
-                  options={postulaciones.map((p) => ({
-                    id: p.id,
-                    label: getPostulacionLabel(p),
-                  }))}
-                  required
-                  className="md:col-span-1"
-                />
+                {isStudent && postulaciones.length === 1 ? (
+                  <>
+                    <FormField
+                      label="Postulación *"
+                      name="postulacion_display"
+                      type="text"
+                      value={getPostulacionLabel(postulaciones[0])}
+                      readOnly
+                      className="md:col-span-1"
+                    />
+                  </>
+                ) : (
+                  <FormField
+                    label="Postulación *"
+                    name="postulacion"
+                    type="select"
+                    value={formData.postulacion}
+                    onChange={handleInputChange}
+                    options={postulaciones.map((p) => ({
+                      id: p.id,
+                      label: getPostulacionLabel(p),
+                    }))}
+                    required
+                    className="md:col-span-1"
+                  />
+                )}
 
                 <FormField
                   label="Etapa Actual"

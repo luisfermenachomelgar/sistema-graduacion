@@ -1,6 +1,7 @@
 from rest_framework import filters, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 from django.conf import settings
 
 BLOCKED_DOCUMENT_MESSAGE = 'Solo es posible subir documentos durante la etapa de Registro. Las actas de evaluación son registradas por la administración de la Carrera.'
@@ -43,6 +44,7 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = DocumentoPostulacionSerializer
     pagination_class = CustomPagination
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['postulacion', 'estado', 'tipo_documento']
     search_fields = ['postulacion__postulante__usuario__username', 'tipo_documento__nombre']
@@ -52,50 +54,19 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Crear o reutilizar documento existente para reenvío por estudiante."""
+        if request.GET.get('debug_request') == '1':
+            return Response({
+                'data_type': type(request.data).__name__,
+                'data_keys': list(request.data.keys()),
+                'data_values': {k: request.data.get(k) for k in ['postulacion', 'tipo_documento', 'archivo']},
+                'files': list(request.FILES.keys()),
+                'content_type': request.content_type,
+            })
+
         user = request.user
         is_privileged = bool(
             user and (user.has_perm('documentos.change_documentopostulacion') or can_view_all_documentos(user))
         )
-
-        if not is_privileged:
-            postulacion_id = request.data.get('postulacion')
-            tipo_documento_id = request.data.get('tipo_documento')
-            try:
-                postulacion_id = int(postulacion_id) if postulacion_id is not None else None
-            except Exception:
-                postulacion_id = None
-            try:
-                tipo_documento_id = int(tipo_documento_id) if tipo_documento_id is not None else None
-            except Exception:
-                tipo_documento_id = None
-
-            if postulacion_id:
-                postulacion = Postulacion.objects.select_related('etapa_actual').filter(id=postulacion_id).first()
-                if postulacion:
-                    etapa_actual = getattr(postulacion.etapa_actual, 'nombre', '') or ''
-                    etapa_actual_norm = etapa_actual.strip().upper()
-                    if etapa_actual_norm != 'REGISTRO':
-                        return Response(
-                            {
-                                'detail': BLOCKED_DOCUMENT_MESSAGE,
-                                'error': BLOCKED_DOCUMENT_MESSAGE,
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
-
-                    tipo_documento_name = ''
-                    if tipo_documento_id:
-                        tipo_documento_name = (
-                            TipoDocumento.objects.filter(id=tipo_documento_id).values_list('nombre', flat=True).first() or ''
-                        )
-                    if tipo_documento_name and 'ACTA' in tipo_documento_name.upper():
-                        return Response(
-                            {
-                                'detail': BLOCKED_DOCUMENT_MESSAGE,
-                                'error': BLOCKED_DOCUMENT_MESSAGE,
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
 
         postulacion_id = request.data.get('postulacion')
         tipo_documento_id = request.data.get('tipo_documento')
@@ -108,54 +79,52 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
         except Exception:
             tipo_documento_id = None
 
+        if not is_privileged and postulacion_id:
+            postulacion = Postulacion.objects.select_related('etapa_actual').filter(id=postulacion_id).first()
+            if postulacion:
+                etapa_actual = getattr(postulacion.etapa_actual, 'nombre', '') or ''
+                etapa_actual_norm = etapa_actual.strip().upper()
+                if etapa_actual_norm != 'REGISTRO':
+                    return Response(
+                        {
+                            'detail': BLOCKED_DOCUMENT_MESSAGE,
+                            'error': BLOCKED_DOCUMENT_MESSAGE,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if tipo_documento_id:
+                    tipo_documento_name = (
+                        TipoDocumento.objects.filter(id=tipo_documento_id).values_list('nombre', flat=True).first() or ''
+                    )
+                    if tipo_documento_name and 'ACTA' in tipo_documento_name.upper():
+                        return Response(
+                            {
+                                'detail': BLOCKED_DOCUMENT_MESSAGE,
+                                'error': BLOCKED_DOCUMENT_MESSAGE,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
         existente = None
         if postulacion_id and tipo_documento_id:
             existente = DocumentoPostulacion.objects.filter(
                 postulacion_id=postulacion_id, tipo_documento_id=tipo_documento_id
             ).first()
-            matching = DocumentoPostulacion.objects.filter(
-                postulacion_id=postulacion_id, tipo_documento_id=tipo_documento_id
-            )
 
         if existente:
-            if not is_privileged:
-                if existente.estado != 'rechazado':
-                    raise ValidationError('Ya existe un documento para este tipo; no puede crear uno nuevo.')
+            if not is_privileged and existente.estado != 'rechazado':
+                raise ValidationError('Ya existe un documento para este tipo; no puede crear uno nuevo.')
 
-                archivo = request.FILES.get('archivo')
-                if not archivo:
-                    raise ValidationError('Para reenviar debe adjuntar el archivo.')
-
-                file_validator = DocumentoPostulacionCreateSerializer(
-                    instance=existente,
-                    data={'archivo': archivo},
-                    partial=True,
-                    context={'request': request}
-                )
-                file_validator.is_valid(raise_exception=True)
-
-                existente.archivo = archivo
-                existente.estado = 'pendiente'
-                existente.revisado_por = None
-                existente.fecha_revision = None
-                existente.comentario_revision = ''
-                existente.save(
-                    update_fields=['archivo', 'estado', 'revisado_por', 'fecha_revision', 'comentario_revision']
-                )
-
-                output = DocumentoPostulacionSerializer(existente, context={'request': request})
-                return Response(output.data, status=status.HTTP_200_OK)
-
-            archivo = request.FILES.get('archivo')
-            if archivo:
-                file_validator = DocumentoPostulacionCreateSerializer(
-                    data={'archivo': archivo}, partial=True, context={'request': request}
-                )
-                file_validator.is_valid(raise_exception=True)
-                existente.archivo = archivo
-                existente.save(update_fields=['archivo'])
-
-            output = DocumentoPostulacionSerializer(existente, context={'request': request})
+            serializer = DocumentoPostulacionCreateSerializer(
+                instance=existente,
+                data=request.data,
+                partial=True,
+                context={'request': request},
+            )
+            serializer.is_valid(raise_exception=True)
+            instancia = serializer.save()
+            output = DocumentoPostulacionSerializer(instancia, context={'request': request})
             return Response(output.data, status=status.HTTP_200_OK)
 
         create_serializer = DocumentoPostulacionCreateSerializer(data=request.data, context={'request': request})
@@ -195,7 +164,20 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
             if not permiso.has_permission(self.request, self):
                 raise PermissionDenied(permiso.message)
 
+        archivo_anterior = None
+        if getattr(instancia_anterior, 'archivo', None):
+            archivo_anterior = (instancia_anterior.archivo.name, instancia_anterior.archivo.size)
+
         instancia = serializer.save()
+
+        archivo_nuevo = None
+        if getattr(instancia, 'archivo', None):
+            archivo_nuevo = (instancia.archivo.name, instancia.archivo.size)
+
+        if archivo_nuevo and archivo_nuevo != archivo_anterior:
+            pass
+        elif getattr(instancia, 'archivo', None) and not getattr(instancia, 'preview_pdf', None):
+            pass
 
         if instancia.estado in {'aprobado', 'rechazado'} and estado_anterior != instancia.estado:
             instancia.revisado_por = self.request.user
@@ -254,8 +236,9 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
                 [usuario.email],
                 fail_silently=True,
             )
-        except Exception as e:
-            print(f"Error al enviar notificación de rechazo: {e}")
+        except Exception:
+            # No-op: no queremos ruido en logs por errores de notificación
+            pass
 
 
 from rest_framework.permissions import AllowAny  

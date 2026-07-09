@@ -88,6 +88,7 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
     archivo_url = serializers.SerializerMethodField()
     archivo_tipo = serializers.SerializerMethodField()
     archivo_tamaño = serializers.SerializerMethodField()
+    preview_pdf_url = serializers.SerializerMethodField()
     
     class Meta:
         model = DocumentoPostulacion
@@ -95,6 +96,7 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
             'id', 'postulacion', 'tipo_documento', 'tipo_documento_nombre',
             'postulante_nombre', 'modalidad_nombre', 'etapa_nombre',
             'archivo', 'archivo_url', 'archivo_tipo', 'archivo_tamaño',
+                'preview_pdf_url',
             'estado', 'estado_display', 'comentario_revision',
             'revisado_por', 'revisado_por_nombre',
             'fecha_subida', 'fecha_revision'
@@ -136,13 +138,25 @@ class DocumentoPostulacionDetailSerializer(serializers.ModelSerializer):
             return round(obj.archivo.size / 1024, 2)
         return None
 
+    def get_preview_pdf_url(self, obj):
+        if getattr(obj, 'preview_pdf', None):
+            try:
+                return obj.preview_pdf.url
+            except Exception:
+                return None
+        return None
+
 
 class DocumentoPostulacionCreateSerializer(serializers.ModelSerializer):
-    """Serializer para crear/subir documentos."""
+    """Serializer para crear/subir documentos.
+    
+    Permitir que admin seleccione el estado al crear.
+    Estudiantes siempre tendrán estado='pendiente' (forzado aquí).
+    """
     
     class Meta:
         model = DocumentoPostulacion
-        fields = ['postulacion', 'tipo_documento', 'archivo']
+        fields = ['postulacion', 'tipo_documento', 'archivo', 'estado']
     
     def validate_archivo(self, value):
         """Valida extensión y tamaño del archivo."""
@@ -158,6 +172,32 @@ class DocumentoPostulacionCreateSerializer(serializers.ModelSerializer):
             )
         
         return value
+    
+    def save(self, **kwargs):
+        """
+        Guardar documento.
+        
+        REGLA DE NEGOCIO:
+        - Admin: puede seleccionar cualquier estado (pendiente, aprobado, rechazado)
+        - Estudiante: siempre se guarda como 'pendiente'
+        """
+        request = self.context.get('request')
+        
+        # Verificar si el usuario es admin/privilegiado
+        is_admin = (
+            request and request.user and (
+                request.user.has_perm('documentos.add_documentopostulacion') or
+                request.user.has_perm('documentos.change_documentopostulacion')
+            )
+        )
+        
+        # Si es estudiante, forzar estado='pendiente' y sin revisor
+        if not is_admin:
+            kwargs['estado'] = 'pendiente'
+            kwargs['revisado_por'] = None
+            kwargs['fecha_revision'] = None
+        
+        return super().save(**kwargs)
 
 
 class DocumentoPostulacionUpdateSerializer(serializers.ModelSerializer):

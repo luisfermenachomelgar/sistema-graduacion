@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from .utils import generar_preview_pdf
+
 
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
@@ -32,6 +34,7 @@ class DocumentoPostulacion(models.Model):
     postulacion = models.ForeignKey('postulantes.Postulacion', on_delete=models.CASCADE, related_name='documentos')
     tipo_documento = models.ForeignKey(TipoDocumento, on_delete=models.PROTECT, related_name='documentos_cargados')
     archivo = models.FileField(upload_to='documentos/postulaciones/')
+    preview_pdf = models.FileField(upload_to='documentos/previews/', null=True, blank=True)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
     comentario_revision = models.TextField(blank=True)
     revisado_por = models.ForeignKey(
@@ -53,6 +56,27 @@ class DocumentoPostulacion(models.Model):
 
     def __str__(self):
         return f"{self.postulacion} - {self.tipo_documento.nombre}"
+
+    def save(self, *args, **kwargs):
+        archivo_anterior = None
+        if self.pk:
+            try:
+                anterior = DocumentoPostulacion.objects.get(pk=self.pk)
+                if getattr(anterior, 'archivo', None):
+                    archivo_anterior = (anterior.archivo.name, anterior.archivo.size)
+            except DocumentoPostulacion.DoesNotExist:
+                archivo_anterior = None
+
+        super().save(*args, **kwargs)
+
+        archivo_actual = None
+        if getattr(self, 'archivo', None):
+            archivo_actual = (self.archivo.name, self.archivo.size)
+
+        if archivo_actual and archivo_actual != archivo_anterior:
+            generar_preview_pdf(self)
+        elif archivo_actual and not getattr(self, 'preview_pdf', None):
+            generar_preview_pdf(self)
 
 
 class ModalidadTipoDocumento(models.Model):
