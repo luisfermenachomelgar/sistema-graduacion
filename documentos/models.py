@@ -4,6 +4,22 @@ from django.db import models
 from .utils import generar_preview_pdf
 
 
+class DocumentoPostulacionQuerySet(models.QuerySet):
+    def delete(self):
+        postulacion_ids = list(self.values_list('postulacion_id', flat=True).distinct())
+        result = super().delete()
+
+        from postulantes.models import Postulacion
+        from postulantes.services import finalizar_postulacion_si_corresponde
+
+        for postulacion_id in postulacion_ids:
+            postulacion = Postulacion.objects.filter(pk=postulacion_id).first()
+            if postulacion is not None:
+                finalizar_postulacion_si_corresponde(postulacion, actor=None)
+
+        return result
+
+
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     etapa = models.ForeignKey(
@@ -25,6 +41,7 @@ class TipoDocumento(models.Model):
 
 
 class DocumentoPostulacion(models.Model):
+    objects = DocumentoPostulacionQuerySet.as_manager()
     ESTADO_CHOICES = (
         ('pendiente', 'Pendiente'),
         ('aprobado', 'Aprobado'),

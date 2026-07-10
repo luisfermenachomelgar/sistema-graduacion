@@ -1,11 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from rest_framework.test import APIRequestFactory
 
 from documentos.models import DocumentoPostulacion, ModalidadTipoDocumento, TipoDocumento
 from modalidades.models import Etapa, Modalidad
 from postulantes.models import Postulante, Postulacion
+from postulantes.serializers import PostulacionSerializer
 from postulantes.services import EtapaIncompletaError, avanzar_postulacion, finalizar_postulacion_si_corresponde
 from postulantes.views import PostulacionViewSet
 
@@ -134,21 +134,33 @@ class AvanzarPostulacionTests(TestCase):
             usuario=usuario,
         )
 
-        factory = APIRequestFactory()
-        request = factory.post('/postulaciones/', {
-            'postulante_id': postulante.id,
-            'modalidad': modalidad.id,
-            'titulo_trabajo': 'Trabajo de prueba',
-            'tutor': 'Tutor',
-            'anio_academico': 2026,
-            'semestre_academico': 1,
-            'etapa_actual': None,
-        }, format='json')
-        request.user = usuario
+        view = PostulacionViewSet()
+        serializer = view.get_serializer()
+        serializer.is_valid(raise_exception=True)
 
-        view = PostulacionViewSet.as_view({'post': 'create'})
-        response = view(request)
-
-        self.assertEqual(response.status_code, 201)
-        postulacion = Postulacion.objects.get(pk=response.data['id'])
+        view.request = type('Request', (), {'user': usuario})()
+        view.perform_create(serializer)
+        postulacion = Postulacion.objects.latest('id')
         self.assertIsNone(postulacion.etapa_actual)
+
+    def test_perform_create_asigna_registro_a_excelencia_academica(self):
+        modalidad = Modalidad.objects.create(nombre='EXCELENCIA ACADÉMICA')
+        etapa_registro = Etapa.objects.create(modalidad=modalidad, nombre='Registro', orden=1, activo=True)
+        usuario = User.objects.create_user(username='tester2', password='secret123')
+        postulante = Postulante.objects.create(
+            nombre='María',
+            apellido='López',
+            ci='11223344',
+            telefono='71111111',
+            codigo_estudiante='EST-003',
+            usuario=usuario,
+        )
+
+        view = PostulacionViewSet()
+        serializer = view.get_serializer()
+        serializer.is_valid(raise_exception=True)
+
+        view.request = type('Request', (), {'user': usuario})()
+        view.perform_create(serializer)
+        postulacion = Postulacion.objects.latest('id')
+        self.assertEqual(postulacion.etapa_actual_id, etapa_registro.id)

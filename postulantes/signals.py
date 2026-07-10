@@ -1,8 +1,10 @@
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 
 from auditoria.services import registrar_auditoria
+from documentos.models import DocumentoPostulacion
 from .models import Postulacion
+from .services import finalizar_postulacion_si_corresponde
 
 
 @receiver(pre_delete, sender=Postulacion)
@@ -45,3 +47,11 @@ def auditar_eliminacion_postulacion(sender, instance, using, **kwargs):
             'razon': 'eliminacion_manual',
         },
     )
+
+
+@receiver(post_delete, sender=DocumentoPostulacion)
+def reevalua_postulacion_al_eliminar_documento(sender, instance, **kwargs):
+    postulacion = getattr(instance, 'postulacion', None)
+    if postulacion is None:
+        return
+    finalizar_postulacion_si_corresponde(postulacion, actor=None)

@@ -4,6 +4,7 @@ from django.db.models import Q
 from rest_framework.test import APIClient, APITestCase
 
 from documentos.models import DocumentoPostulacion, ModalidadTipoDocumento, TipoDocumento
+from documentos.services import sync_excelencia_academica_catalog
 from modalidades.models import Etapa, Modalidad
 from postulantes.models import Postulante, Postulacion
 
@@ -197,3 +198,75 @@ class DocumentoPostulacionStageRulesTests(APITestCase):
 
         postulacion_historica.refresh_from_db()
         self.assertEqual(postulacion_historica.estado_general, 'EN_PROCESO')
+
+    def test_sync_excelencia_academica_crea_etapa_registro_y_catalogo_oficial(self):
+        modalidad = Modalidad.objects.create(nombre='EXCELENCIA  ACADÉMICA')
+        Etapa.objects.create(modalidad=modalidad, nombre='Presentación de Requisitos', orden=1, activo=True)
+        Etapa.objects.create(modalidad=modalidad, nombre='Revisión de Expediente', orden=2, activo=True)
+        Etapa.objects.create(modalidad=modalidad, nombre='Acta Final', orden=3, activo=True)
+
+        sync_excelencia_academica_catalog()
+
+        etapas = {etapa.nombre: etapa for etapa in Etapa.objects.filter(modalidad=modalidad).order_by('orden')}
+        self.assertIn('Registro', etapas)
+        self.assertEqual(etapas['Registro'].orden, 1)
+        self.assertEqual(etapas['Presentación de Requisitos'].orden, 2)
+        self.assertEqual(etapas['Revisión de Expediente'].orden, 3)
+        self.assertEqual(etapas['Acta Final'].orden, 4)
+
+        relaciones = list(
+            ModalidadTipoDocumento.objects.filter(modalidad=modalidad)
+            .select_related('tipo_documento', 'etapa')
+            .order_by('etapa__orden', 'orden', 'tipo_documento__nombre')
+        )
+
+        self.assertEqual(
+            [rel.tipo_documento.nombre for rel in relaciones if rel.etapa.nombre == 'Presentación de Requisitos'],
+            [
+                'Carta de solicitud a la Dirección de la Carrera.',
+                'Fotocopia del recibo de pago de matrícula.',
+                'Historial Académico.',
+                'Fólder amarillo rotulado.',
+                'Certificaciones de investigación e interacción social.',
+            ],
+        )
+        self.assertEqual(
+            [rel.tipo_documento.nombre for rel in relaciones if rel.etapa.nombre == 'Revisión de Expediente'],
+            [
+                'Certificado de la Dirección de Planificación Académica.',
+                'Certificado de Solvencia Universitaria.',
+                'Certificado de Solvencia Bibliotecaria.',
+                'Timbre Universitario para la modalidad Excelencia Académica.',
+            ],
+        )
+        self.assertEqual(
+            [rel.tipo_documento.nombre for rel in relaciones if rel.etapa.nombre == 'Acta Final'],
+            ['Acta de Graduación por Excelencia Académica.'],
+        )
+        self.assertNotIn('Certificado de notas del programa', [rel.tipo_documento.nombre for rel in relaciones])
+        self.assertNotIn('Copia simple de cédula de identidad', [rel.tipo_documento.nombre for rel in relaciones])
+        self.assertNotIn('Currículum vitae actualizado', [rel.tipo_documento.nombre for rel in relaciones])
+        self.assertNotIn('Memoria o trabajo final de graduación', [rel.tipo_documento.nombre for rel in relaciones])
+        self.assertNotIn('Acta de defensa de tesis o de modalidad de graduación', [rel.tipo_documento.nombre for rel in relaciones])
+        self.assertEqual(len(relaciones), 10)
+
+    def test_sync_excelencia_academica_elimina_relaciones_antiguas_de_otras_etapas(self):
+        modalidad = Modalidad.objects.create(nombre='EXCELENCIA ACADÉMICA')
+        etapa_registro = Etapa.objects.create(modalidad=modalidad, nombre='Registro', orden=1, activo=True)
+        etapa_presentacion = Etapa.objects.create(modalidad=modalidad, nombre='Presentación de Requisitos', orden=2, activo=True)
+        tipo_carta = TipoDocumento.objects.create(nombre='Carta de solicitud', obligatorio=True, activo=True)
+
+        ModalidadTipoDocumento.objects.create(
+            modalidad=modalidad,
+            tipo_documento=tipo_carta,
+            etapa=etapa_presentacion,
+            obligatorio=True,
+            activo=True,
+            orden=1,
+        )
+
+        sync_excelencia_academica_catalog()
+
+        relaciones = ModalidadTipoDocumento.objects.filter(modalidad=modalidad, tipo_documento=tipo_carta)
+        self.assertEqual(relaciones.count(), 1)
+        self.assertEqual(relaciones.get().etapa, etapa_registro)

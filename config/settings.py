@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'usuarios',
     'modalidades',
-    'postulantes',
+    'postulantes.apps.PostulantesConfig',
     'documentos',
     'reportes',
     'auditoria',
