@@ -126,7 +126,7 @@ class PostulacionViewSet(viewsets.ModelViewSet):
         modalidad_obj = serializer.validated_data.get('modalidad')
         if modalidad_obj and getattr(modalidad_obj, 'nombre', None):
             nombre_modalidad = modalidad_obj.nombre.strip().upper()
-            if nombre_modalidad in {'EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA', 'EXCELENCIA  ACADÉMICA'}:
+            if nombre_modalidad in {'EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA', 'EXCELENCIA  ACADÉMICA', 'PROYECTO DE GRADO'}:
                 etapa_inicial = Etapa.objects.filter(modalidad=modalidad_obj, orden=1, activo=True).first()
                 if etapa_inicial:
                     serializer.save(etapa_actual=etapa_inicial)
