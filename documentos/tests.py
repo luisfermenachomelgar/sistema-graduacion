@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Q
 from rest_framework.test import APIClient, APITestCase
 
-from documentos.models import ModalidadTipoDocumento, TipoDocumento
+from documentos.models import DocumentoPostulacion, ModalidadTipoDocumento, TipoDocumento
 from modalidades.models import Etapa, Modalidad
 from postulantes.models import Postulante, Postulacion
 
@@ -130,3 +130,70 @@ class DocumentoPostulacionStageRulesTests(APITestCase):
         self.assertIn('Documento general normal', nombres)
         self.assertIn('Documento de registro normal', nombres)
         self.assertNotIn('Documento posterior normal', nombres)
+
+    def test_postulacion_historica_se_finaliza_cuando_todos_los_obligatorios_estan_aprobados(self):
+        postulacion_historica = Postulacion.objects.create(
+            postulante=self.postulante,
+            modalidad=self.modalidad,
+            etapa_actual=None,
+            titulo_trabajo='Trabajo histórico',
+            gestion=2026,
+            estado_general='EN_PROCESO',
+        )
+        tipo_uno = TipoDocumento.objects.create(nombre='Documento histórico obligatorio 1', obligatorio=True, activo=True)
+        tipo_dos = TipoDocumento.objects.create(nombre='Documento histórico obligatorio 2', obligatorio=True, activo=True)
+
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_uno, etapa=None, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_dos, etapa=None, obligatorio=True, activo=True)
+
+        DocumentoPostulacion.objects.create(
+            postulacion=postulacion_historica,
+            tipo_documento=tipo_uno,
+            archivo=SimpleUploadedFile('doc1.pdf', b'data', content_type='application/pdf'),
+            estado='aprobado',
+        )
+        DocumentoPostulacion.objects.create(
+            postulacion=postulacion_historica,
+            tipo_documento=tipo_dos,
+            archivo=SimpleUploadedFile('doc2.pdf', b'data', content_type='application/pdf'),
+            estado='aprobado',
+        )
+
+        postulacion_historica.refresh_from_db()
+        self.assertEqual(postulacion_historica.estado_general, 'FINALIZADA')
+
+    def test_postulacion_historica_vuelve_a_en_proceso_al_eliminar_un_documento_obligatorio(self):
+        postulacion_historica = Postulacion.objects.create(
+            postulante=self.postulante,
+            modalidad=self.modalidad,
+            etapa_actual=None,
+            titulo_trabajo='Trabajo histórico 2',
+            gestion=2026,
+            estado_general='EN_PROCESO',
+        )
+        tipo_uno = TipoDocumento.objects.create(nombre='Documento histórico obligatorio 3', obligatorio=True, activo=True)
+        tipo_dos = TipoDocumento.objects.create(nombre='Documento histórico obligatorio 4', obligatorio=True, activo=True)
+
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_uno, etapa=None, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_dos, etapa=None, obligatorio=True, activo=True)
+
+        DocumentoPostulacion.objects.create(
+            postulacion=postulacion_historica,
+            tipo_documento=tipo_uno,
+            archivo=SimpleUploadedFile('doc3.pdf', b'data', content_type='application/pdf'),
+            estado='aprobado',
+        )
+        DocumentoPostulacion.objects.create(
+            postulacion=postulacion_historica,
+            tipo_documento=tipo_dos,
+            archivo=SimpleUploadedFile('doc4.pdf', b'data', content_type='application/pdf'),
+            estado='aprobado',
+        )
+
+        postulacion_historica.refresh_from_db()
+        self.assertEqual(postulacion_historica.estado_general, 'FINALIZADA')
+
+        DocumentoPostulacion.objects.filter(postulacion=postulacion_historica, tipo_documento=tipo_dos).delete()
+
+        postulacion_historica.refresh_from_db()
+        self.assertEqual(postulacion_historica.estado_general, 'EN_PROCESO')

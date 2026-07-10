@@ -49,6 +49,19 @@ def finalizar_postulacion_si_corresponde(postulacion: Postulacion, *, actor=None
     missing_docs = required_documents_missing_for_historical_flow(postulacion)
 
     if missing_docs:
+        if estado_general_anterior == 'FINALIZADA':
+            postulacion.estado_general = 'EN_PROCESO'
+            postulacion.save(update_fields=['estado_general'])
+            if estado_general_anterior != postulacion.estado_general:
+                registrar_auditoria(
+                    usuario=actor,
+                    accion='CAMBIO_ESTADO_GENERAL',
+                    modelo_afectado='Postulacion',
+                    objeto_id=postulacion.id,
+                    estado_anterior={'estado_general': estado_general_anterior},
+                    estado_nuevo={'estado_general': postulacion.estado_general},
+                    detalles={'motivo': 'reapertura_por_documentos_historicos'},
+                )
         return postulacion
 
     if estado_general_anterior == 'FINALIZADA':

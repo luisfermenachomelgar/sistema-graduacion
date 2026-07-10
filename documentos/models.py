@@ -78,6 +78,29 @@ class DocumentoPostulacion(models.Model):
         elif archivo_actual and not getattr(self, 'preview_pdf', None):
             generar_preview_pdf(self)
 
+        from postulantes.services import finalizar_postulacion_si_corresponde
+
+        if getattr(self, 'postulacion_id', None):
+            postulacion = self.postulacion
+            if postulacion is not None:
+                finalizar_postulacion_si_corresponde(postulacion, actor=None)
+
+    def delete(self, *args, **kwargs):
+        postulacion = getattr(self, 'postulacion', None)
+        if postulacion is None and getattr(self, 'postulacion_id', None):
+            from postulantes.models import Postulacion
+
+            postulacion = Postulacion.objects.filter(pk=self.postulacion_id).first()
+
+        result = super().delete(*args, **kwargs)
+
+        if postulacion is not None:
+            from postulantes.services import finalizar_postulacion_si_corresponde
+
+            finalizar_postulacion_si_corresponde(postulacion, actor=None)
+
+        return result
+
 
 class ModalidadTipoDocumento(models.Model):
     """
