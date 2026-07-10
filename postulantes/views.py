@@ -21,7 +21,7 @@ from documentos.models import DocumentoPostulacion
 from modalidades.models import Etapa
 from .models import ComentarioInterno, Notificacion, Postulacion, Postulante
 from .serializers import ComentarioInternoSerializer, EtapaSerializer, NotificacionSerializer, PostulacionSerializer, PostulanteSerializer
-from .services import avanzar_postulacion
+from .services import avanzar_postulacion, finalizar_postulacion_si_corresponde
 from .tasks import limpiar_notificaciones_antiguas
 from reportes.services import dashboard_general, generar_pdf_dashboard
 
@@ -109,9 +109,20 @@ class PostulacionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Para la modalidad EXAMEN DE GRADO, garantizar que la postulación
-        se cree en la etapa inicial (orden=1). No modificar flujo de documentos.
+        Para la modalidad EXAMEN DE GRADO, asignar automáticamente la etapa inicial
+        (orden=1) solo cuando el usuario inicia el flujo normal por etapas y
+        envía una etapa válida. Si el usuario selecciona el flujo histórico
+        (etapa_actual=null), se conserva null y no se reemplaza por Registro.
         """
+        etapa_actual_valida = serializer.validated_data.get('etapa_actual')
+
+        # Flujo histórico / Modalidad Finalizada: respetar el null recibido.
+        if etapa_actual_valida is None:
+            postulacion = serializer.save()
+            finalizar_postulacion_si_corresponde(postulacion, actor=self.request.user)
+            return
+
+        # Solo asignar la etapa inicial si el usuario realmente envía una etapa válida.
         modalidad_obj = serializer.validated_data.get('modalidad')
         if modalidad_obj and getattr(modalidad_obj, 'nombre', None):
             if modalidad_obj.nombre.strip().upper() == 'EXAMEN DE GRADO':
@@ -120,7 +131,8 @@ class PostulacionViewSet(viewsets.ModelViewSet):
                     serializer.save(etapa_actual=etapa_inicial)
                     return
 
-        serializer.save()
+        postulacion = serializer.save()
+        finalizar_postulacion_si_corresponde(postulacion, actor=self.request.user)
 
     @action(
         detail=True,

@@ -316,10 +316,15 @@ const Postulaciones = () => {
       key: 'etapa_actual',
       label: 'Etapa Actual',
       render: (_, row) => {
-        if (row.estado_general === 'FINALIZADA') {
-          return 'Modalidad Finalizada';
+        const isHistoricalFlow = !row.etapa_actual && !row.etapa_nombre && row.estado_general !== 'FINALIZADA';
+        if (row.estado_general === 'FINALIZADA' || (!row.etapa_actual && !row.etapa_nombre && row.estado_general === 'EN_PROCESO')) {
+          return (
+            <span className={isHistoricalFlow ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'}>
+              Modalidad Finalizada
+            </span>
+          );
         }
-        return row.etapa_actual?.nombre || row.etapa_nombre || 'Sin etapa';
+        return row.etapa_actual?.nombre || row.etapa_nombre || 'Modalidad Finalizada';
       },
     },
     {
@@ -327,8 +332,13 @@ const Postulaciones = () => {
       label: 'Acción',
       render: (_, row) => {
         if (isStudent) return null;
+
+        const isHistoricalFlow = !row.etapa_actual && !row.etapa_nombre && row.estado_general !== 'FINALIZADA';
         if (row.estado_general === 'FINALIZADA') {
           return <span className="text-sm font-medium text-green-700 dark:text-green-400">Finalizada</span>;
+        }
+        if (isHistoricalFlow) {
+          return <span className="text-sm font-medium text-red-600 dark:text-red-400">Documentos pendientes</span>;
         }
 
         return (
@@ -592,8 +602,8 @@ const Postulaciones = () => {
                         .map((etapa) => ({ id: etapa.id, label: etapa.nombre }))
                     : []
                 }
-                placeholder="Sin etapa actual"
-                helperText="Opcional. Si no se selecciona, la postulación queda sin etapa asignada."
+                placeholder="Modalidad Finalizada"
+                helperText="Opcional. Si no se selecciona, la postulación queda en el flujo histórico sin etapa asignada."
                 className="sm:col-span-2"
               />
             </div>

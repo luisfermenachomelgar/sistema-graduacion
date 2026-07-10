@@ -54,6 +54,32 @@ const isDocumentAllowedForStudent = (documentName) => {
   );
 };
 
+const isActaDocumentName = (documentName) => {
+  if (!documentName || typeof documentName !== 'string') return false;
+  return /\bacta(s)?\b/i.test(documentName.trim());
+};
+
+const sortDocumentosPorOrden = (documentos) => {
+  return [...documentos].sort((a, b) => {
+    const ordenA = Number.isFinite(a?.orden) ? a.orden : Number.MAX_SAFE_INTEGER;
+    const ordenB = Number.isFinite(b?.orden) ? b.orden : Number.MAX_SAFE_INTEGER;
+
+    if (ordenA !== ordenB) {
+      return ordenA - ordenB;
+    }
+
+    const nombreA = a?.label || a?.nombre || '';
+    const nombreB = b?.label || b?.nombre || '';
+    return String(nombreA).localeCompare(String(nombreB), 'es', { sensitivity: 'base' });
+  });
+};
+
+const buildDocumentosPorGrupo = (documentos) => {
+  const requisitos = sortDocumentosPorOrden(documentos.filter((doc) => !isActaDocumentName(doc.label || doc.nombre)));
+  const actas = sortDocumentosPorOrden(documentos.filter((doc) => isActaDocumentName(doc.label || doc.nombre)));
+  return { requisitos, actas };
+};
+
 const normalizeErrorMessage = (message) => {
   if (typeof message !== 'string') return message;
   return message.replace(/^detail:\s*/i, '').trim();
@@ -85,6 +111,13 @@ const Documentos = () => {
   const [success, setSuccess] = useState('');
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [tiposDocumentoFiltrados, setTiposDocumentoFiltrados] = useState([]);
+  const documentosPorGrupo = buildDocumentosPorGrupo(tiposDocumentoFiltrados);
+  const requisitosVisibles = documentosPorGrupo.requisitos.filter((tipoDoc) =>
+    isStudent ? isDocumentAllowedForStudent(tipoDoc.label || tipoDoc.nombre) : true
+  );
+  const actasVisibles = documentosPorGrupo.actas.filter((tipoDoc) =>
+    isStudent ? isDocumentAllowedForStudent(tipoDoc.label || tipoDoc.nombre) : true
+  );
   const [postulaciones, setPostulaciones] = useState([]);
   const [tiposDocumentoPorModalidad, setTiposDocumentoPorModalidad] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,7 +177,7 @@ const Documentos = () => {
         }
 
         if (modalidadId) {
-          await getTiposDocumentoFiltrados(modalidadId, etapaId);
+          await getTiposDocumentoFiltrados(modalidadId, etapaId, single.id);
         }
       }
     };
@@ -178,19 +211,22 @@ const Documentos = () => {
     }
   };
 
-  const fetchTiposDocumentoPorModalidad = async (modalidadId, etapaId = null) => {
+  const fetchTiposDocumentoPorModalidad = async (modalidadId, etapaId = null, postulacionId = null) => {
     if (!modalidadId) {
       return [];
     }
 
-    const cacheKey = `${modalidadId}:${etapaId || 'null'}`;
+    const cacheKey = `${modalidadId}:${postulacionId || 'none'}:${etapaId || 'null'}`;
     if (tiposDocumentoPorModalidad[cacheKey]) {
       return tiposDocumentoPorModalidad[cacheKey];
     }
 
     try {
       const url = API_CONFIG.ENDPOINTS.MODALIDAD_TIPOS_DOCUMENTO(modalidadId);
-      const params = etapaId ? { etapa: etapaId } : {};
+      const params = {
+        ...(postulacionId ? { postulacion: postulacionId } : {}),
+        ...(etapaId ? { etapa: etapaId } : {}),
+      };
       const result = await api.getAll(url, params, { skipGlobalLoader: true });
 
       if (result.success) {
@@ -209,8 +245,8 @@ const Documentos = () => {
     }
   };
 
-  const getTiposDocumentoFiltrados = async (modalidadId, etapaId = null) => {
-    const modalidadTipos = await fetchTiposDocumentoPorModalidad(modalidadId, etapaId);
+  const getTiposDocumentoFiltrados = async (modalidadId, etapaId = null, postulacionId = null) => {
+    const modalidadTipos = await fetchTiposDocumentoPorModalidad(modalidadId, etapaId, postulacionId);
     const deduplicated = [];
     const seenDocumentos = new Set();
 
@@ -223,9 +259,11 @@ const Documentos = () => {
 
     const filtered = deduplicated.map((item) => ({
       id: item.tipo_documento.id,
+      nombre: item.tipo_documento.nombre,
       label: item.tipo_documento.nombre,
       obligatorio: item.obligatorio,
       etapa_nombre: item.etapa_nombre,
+      orden: item.orden ?? 0,
     }));
     setTiposDocumentoFiltrados(filtered);
     return filtered;
@@ -326,7 +364,7 @@ const Documentos = () => {
       }
 
       if (modalidadId) {
-        await getTiposDocumentoFiltrados(modalidadId, etapaId);
+        await getTiposDocumentoFiltrados(modalidadId, etapaId, newValue);
         setFormData((prev) => ({
           ...prev,
           tipo_documento: '',
@@ -495,7 +533,7 @@ const Documentos = () => {
       }
 
       if (modalidadId) {
-        await getTiposDocumentoFiltrados(modalidadId, etapaId);
+        await getTiposDocumentoFiltrados(modalidadId, etapaId, formData.postulacion);
       }
     };
 
@@ -838,62 +876,132 @@ const Documentos = () => {
                 title="Documentos a cargar"
                 description="Selecciona los archivos que deseas cargar. Solo se guardarán los documentos que tengan archivo."
               >
-                <div className="space-y-3">
-                  {tiposDocumentoFiltrados
-                    .filter((tipoDoc) =>
-                      isStudent ? isDocumentAllowedForStudent(tipoDoc.label || tipoDoc.nombre) : true
-                    )
-                    .map((tipoDoc) => (
-                    <div
-                      key={tipoDoc.id}
-                      className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
-                    >
-                      {/* Nombre del documento */}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {tipoDoc.label || tipoDoc.nombre}
-                        </p>
-                        {selectedDocuments[tipoDoc.id]?.fileName && (
-                          <p className="text-xs text-green-600 dark:text-green-400">
-                            ✓ {selectedDocuments[tipoDoc.id].fileName}
-                          </p>
-                        )}
+                <div className="space-y-6">
+                  {requisitosVisibles.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300">
+                          Requisitos
+                        </h4>
+                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                          {requisitosVisibles.length}
+                        </span>
                       </div>
-
-                      {/* Selector de archivo */}
-                      <div className="flex gap-2">
-                        <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                          <Upload className="h-4 w-4" />
-                          <span>Seleccionar</span>
-                          <input
-                            type="file"
-                            name={`archivo_${tipoDoc.id}`}
-                            onChange={handleInputChange}
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                            className="hidden"
-                          />
-                        </label>
-
-                        {/* Botón para quitar/cambiar */}
-                        {selectedDocuments[tipoDoc.id] && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedDocuments((prev) => {
-                                const updated = { ...prev };
-                                delete updated[tipoDoc.id];
-                                return updated;
-                              });
-                            }}
-                            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                      <div className="space-y-3">
+                        {requisitosVisibles.map((tipoDoc) => (
+                          <div
+                            key={tipoDoc.id}
+                            className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
                           >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Quitar</span>
-                          </button>
-                        )}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {tipoDoc.label || tipoDoc.nombre}
+                              </p>
+                              {selectedDocuments[tipoDoc.id]?.fileName && (
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                  ✓ {selectedDocuments[tipoDoc.id].fileName}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                                <Upload className="h-4 w-4" />
+                                <span>Seleccionar</span>
+                                <input
+                                  type="file"
+                                  name={`archivo_${tipoDoc.id}`}
+                                  onChange={handleInputChange}
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                  className="hidden"
+                                />
+                              </label>
+
+                              {selectedDocuments[tipoDoc.id] && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDocuments((prev) => {
+                                      const updated = { ...prev };
+                                      delete updated[tipoDoc.id];
+                                      return updated;
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Quitar</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {actasVisibles.length > 0 && (
+                    <div className="space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300">
+                          Actas
+                        </h4>
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                          {actasVisibles.length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {actasVisibles.map((tipoDoc) => (
+                          <div
+                            key={tipoDoc.id}
+                            className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {tipoDoc.label || tipoDoc.nombre}
+                              </p>
+                              {selectedDocuments[tipoDoc.id]?.fileName && (
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                  ✓ {selectedDocuments[tipoDoc.id].fileName}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                                <Upload className="h-4 w-4" />
+                                <span>Seleccionar</span>
+                                <input
+                                  type="file"
+                                  name={`archivo_${tipoDoc.id}`}
+                                  onChange={handleInputChange}
+                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                  className="hidden"
+                                />
+                              </label>
+
+                              {selectedDocuments[tipoDoc.id] && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDocuments((prev) => {
+                                      const updated = { ...prev };
+                                      delete updated[tipoDoc.id];
+                                      return updated;
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Quitar</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {Object.keys(selectedDocuments).length === 0 && (

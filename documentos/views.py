@@ -24,6 +24,7 @@ from .serializers import (
     DocumentoPostulacionCreateSerializer,
 )
 from postulantes.models import Postulacion
+from postulantes.services import finalizar_postulacion_si_corresponde
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -200,6 +201,8 @@ class DocumentoPostulacionViewSet(viewsets.ModelViewSet):
 
             if instancia.estado == 'rechazado':
                 self.enviar_notificacion_rechazo(instancia)
+
+            finalizar_postulacion_si_corresponde(instancia.postulacion, actor=self.request.user)
 
     def enviar_notificacion_rechazo(self, documento):
         """Envía un correo al estudiante notificando que su documento fue rechazado."""

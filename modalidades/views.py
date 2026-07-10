@@ -10,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from config.permissions import CRUDModelPermission
 from documentos.models import ModalidadTipoDocumento
 from documentos.serializers import ModalidadTipoDocumentoSerializer
+from postulantes.models import Postulacion
 from .models import Etapa, Modalidad, ModalidadRequisito
 from .serializers import EtapaSerializer, ModalidadRequisitoSerializer, ModalidadSerializer
 
@@ -110,11 +111,27 @@ class ModalidadViewSet(viewsets.ModelViewSet):
             tipo_documento__activo=True,
         )
 
+        postulacion_id = request.query_params.get('postulacion')
         etapa_id = request.query_params.get('etapa')
-        if etapa_id:
-            queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
+
+        if postulacion_id:
+            try:
+                postulacion = Postulacion.objects.select_related('etapa_actual').get(pk=int(postulacion_id))
+            except (Postulacion.DoesNotExist, ValueError):
+                postulacion = None
+
+            if postulacion and postulacion.etapa_actual_id is None:
+                queryset = queryset.order_by('orden', 'tipo_documento__nombre')
+            else:
+                if etapa_id:
+                    queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
+                else:
+                    queryset = queryset.filter(etapa__isnull=True)
         else:
-            queryset = queryset.filter(etapa__isnull=True)
+            if etapa_id:
+                queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
+            else:
+                queryset = queryset.filter(etapa__isnull=True)
 
         serializer = ModalidadTipoDocumentoSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)

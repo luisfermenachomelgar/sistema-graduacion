@@ -1,14 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-from rest_framework.test import APIClient
+from django.db.models import Q
+from rest_framework.test import APIClient, APITestCase
 
-from documentos.models import TipoDocumento
+from documentos.models import ModalidadTipoDocumento, TipoDocumento
 from modalidades.models import Etapa, Modalidad
 from postulantes.models import Postulante, Postulacion
 
 
-class DocumentoPostulacionStageRulesTests(TestCase):
+class DocumentoPostulacionStageRulesTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
@@ -80,3 +80,53 @@ class DocumentoPostulacionStageRulesTests(TestCase):
             response.data['detail'],
             'Solo es posible subir documentos durante la etapa de Registro. Las actas de evaluación son registradas por la administración de la Carrera.',
         )
+
+    def test_tipos_documento_historicos_devuelven_todos_los_documentos_de_la_modalidad(self):
+        postulacion_historica = Postulacion.objects.create(
+            postulante=self.postulante,
+            modalidad=self.modalidad,
+            etapa_actual=None,
+            titulo_trabajo='Trabajo histórico',
+            gestion=2026,
+            estado_general='EN_PROCESO',
+        )
+        tipo_general = TipoDocumento.objects.create(nombre='Documento general', obligatorio=True, activo=True)
+        tipo_registro = TipoDocumento.objects.create(nombre='Documento de registro', obligatorio=True, activo=True)
+        tipo_posterior = TipoDocumento.objects.create(nombre='Documento posterior', obligatorio=True, activo=True)
+
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_general, etapa=None, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_registro, etapa=self.etapa_registro, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_posterior, etapa=self.etapa_posterior, obligatorio=True, activo=True)
+
+        queryset = ModalidadTipoDocumento.objects.filter(
+            modalidad=self.modalidad,
+            activo=True,
+            tipo_documento__activo=True,
+        )
+        if postulacion_historica.etapa_actual_id is None:
+            queryset = queryset.order_by('orden', 'tipo_documento__nombre')
+        nombres = [item.tipo_documento.nombre for item in queryset]
+
+        self.assertEqual(len(nombres), 3)
+        self.assertIn('Documento general', nombres)
+        self.assertIn('Documento de registro', nombres)
+        self.assertIn('Documento posterior', nombres)
+
+    def test_tipos_documento_en_flujo_normal_siguen_filtrando_por_etapa(self):
+        tipo_general = TipoDocumento.objects.create(nombre='Documento general normal', obligatorio=True, activo=True)
+        tipo_registro = TipoDocumento.objects.create(nombre='Documento de registro normal', obligatorio=True, activo=True)
+        tipo_posterior = TipoDocumento.objects.create(nombre='Documento posterior normal', obligatorio=True, activo=True)
+
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_general, etapa=None, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_registro, etapa=self.etapa_registro, obligatorio=True, activo=True)
+        ModalidadTipoDocumento.objects.create(modalidad=self.modalidad, tipo_documento=tipo_posterior, etapa=self.etapa_posterior, obligatorio=True, activo=True)
+
+        queryset = ModalidadTipoDocumento.objects.filter(
+            modalidad=self.modalidad,
+            activo=True,
+            tipo_documento__activo=True,
+        ).filter(Q(etapa__isnull=True) | Q(etapa=self.etapa_registro))
+        nombres = [item.tipo_documento.nombre for item in queryset]
+        self.assertIn('Documento general normal', nombres)
+        self.assertIn('Documento de registro normal', nombres)
+        self.assertNotIn('Documento posterior normal', nombres)

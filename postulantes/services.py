@@ -13,6 +13,64 @@ ACTA_FINAL_EXAMEN_GRADO_NOMBRE = 'Acta Final del Examen de Grado'
 ACTA_FINAL_EXAMEN_GRADO_ETAPA_NOMBRE = 'ACTA FINAL'
 
 
+def es_registro_historico(postulacion: Postulacion) -> bool:
+    return getattr(postulacion, 'etapa_actual_id', None) is None
+
+
+def required_documents_missing_for_historical_flow(postulacion: Postulacion) -> list[dict]:
+    mtd_qs = ModalidadTipoDocumento.objects.filter(
+        modalidad_id=postulacion.modalidad_id,
+        obligatorio=True,
+        activo=True,
+    )
+
+    if not mtd_qs.exists():
+        return []
+
+    missing: list[dict] = []
+    for mtd in mtd_qs.select_related('tipo_documento'):
+        tipo = mtd.tipo_documento
+        docs = DocumentoPostulacion.objects.filter(postulacion_id=postulacion.id, tipo_documento_id=tipo.id)
+        if not docs.exists():
+            missing.append({'id': tipo.id, 'nombre': tipo.nombre, 'motivo': 'no_cargado'})
+            continue
+        aprobado = docs.filter(estado='aprobado').exists()
+        if not aprobado:
+            missing.append({'id': tipo.id, 'nombre': tipo.nombre, 'motivo': 'no_aprobado'})
+
+    return missing
+
+
+def finalizar_postulacion_si_corresponde(postulacion: Postulacion, *, actor=None) -> Postulacion:
+    if not es_registro_historico(postulacion):
+        return postulacion
+
+    estado_general_anterior = postulacion.estado_general
+    missing_docs = required_documents_missing_for_historical_flow(postulacion)
+
+    if missing_docs:
+        return postulacion
+
+    if estado_general_anterior == 'FINALIZADA':
+        return postulacion
+
+    postulacion.estado_general = 'FINALIZADA'
+    postulacion.save(update_fields=['estado_general'])
+
+    if estado_general_anterior != postulacion.estado_general:
+        registrar_auditoria(
+            usuario=actor,
+            accion='CAMBIO_ESTADO_GENERAL',
+            modelo_afectado='Postulacion',
+            objeto_id=postulacion.id,
+            estado_anterior={'estado_general': estado_general_anterior},
+            estado_nuevo={'estado_general': postulacion.estado_general},
+            detalles={'motivo': 'finalizacion_por_documentos_historicos'},
+        )
+
+    return postulacion
+
+
 ESTADO_GENERAL_BY_ORDEN = {
     1: 'EN_PROCESO',
     2: 'PERFIL_APROBADO',
