@@ -4,8 +4,9 @@
  */
 
 import { useState } from 'react';
-import { Modal, FormField, Table, Alert } from '../components';
-import { PageHeader, SectionCard } from '../components';
+import { Modal, Table, Alert } from '../components';
+import { PageHeader } from '../components';
+import UserFormContent from '../components/UserFormContent';
 import { useModal } from '../hooks/useModal';
 import { useCrud } from '../hooks/useCrud';
 import { useListFilters } from '../hooks/useListFilters';
@@ -197,88 +198,13 @@ const Usuarios = () => {
         isLoading={isSubmitting}
         sizeClass="max-w-4xl"
       >
-        <div className="space-y-6">
-          <SectionCard title="Información de acceso" description="Credenciales para ingreso al sistema.">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-              <FormField
-                label="Usuario"
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                required
-                className="md:col-span-1"
-              />
-              <FormField
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                className="md:col-span-1"
-              />
-              {!isEditMode && (
-                <FormField
-                  label="Contraseña"
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className="md:col-span-2"
-                />
-              )}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Información personal" description="Datos básicos del usuario.">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-              <FormField
-                label="Nombre"
-                type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleInputChange}
-              />
-              <FormField
-                label="Apellido"
-                type="text"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleInputChange}
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Permisos y estado" description="Nivel de acceso y estado de habilitación.">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-              <FormField
-                label="Rol"
-                type="select"
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                disabled={!!formData.is_superuser}
-                options={[
-                  { id: 'admin', label: 'Administrador' },
-                  { id: 'estudiante', label: 'Estudiante' },
-                ]}
-                required
-              />
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-700/60">
-                <FormField
-                  label="Usuario activo"
-                  type="checkbox"
-                  name="is_active"
-                    value={formData.is_active}
-                    onChange={handleInputChange}
-                    disabled={!!formData.is_superuser}
-                />
-              </div>
-            </div>
-          </SectionCard>
-        </div>
+        <UserFormContent
+          formData={formData}
+          onInputChange={handleInputChange}
+          isEditMode={isEditMode}
+          readOnlyRole={false}
+          readOnlyState={false}
+        />
       </Modal>
 
       {loading ? (

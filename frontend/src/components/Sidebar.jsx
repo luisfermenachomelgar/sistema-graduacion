@@ -17,31 +17,31 @@ const Sidebar = () => {
       label: 'Dashboard',
       href: '/dashboard',
       icon: '📊',
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
     {
       label: 'Postulantes',
       href: '/postulantes',
       icon: '👥',
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
     {
       label: 'Postulaciones',
       href: '/postulaciones',
       icon: '📋',
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       label: 'Documentos',
       href: '/documentos',
       icon: '📄',
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       label: 'Modalidades',
       href: '/modalidades',
       icon: '🎓',
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       label: 'Usuarios',
@@ -53,7 +53,7 @@ const Sidebar = () => {
       label: 'Reportes',
       href: '/reportes',
       icon: '📈',
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
   ];
 

@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import Modal from './Modal';
 import HelpCenter from './HelpCenter';
 import NotificationBell from './NotificationBell';
+import SettingsModal from './SettingsModal';
 
 const Header = ({ user, onLogout }) => {
   // Paleta corporativa (reutiliza exactamente la del Sidebar)
@@ -21,6 +22,7 @@ const Header = ({ user, onLogout }) => {
   const { isDark, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   const userMenuRef = useRef(null)
   const userMenuButtonRef = useRef(null)
@@ -180,7 +182,14 @@ const Header = ({ user, onLogout }) => {
                     </p>
                   </div>
                   <div className="p-2">
-                    <button className="w-full flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all duration-180 header-action header-dropdown-item" style={{ color: TEXT_ON_DARK }}>
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setShowSettings(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all duration-180 header-action header-dropdown-item"
+                      style={{ color: TEXT_ON_DARK }}
+                    >
                       <Settings className="w-4 h-4" style={{ color: TEXT_ON_DARK }} />
                       Configuración
                     </button>
@@ -212,6 +221,13 @@ const Header = ({ user, onLogout }) => {
       >
         <HelpCenter />
       </Modal>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        user={user}
+        onUserUpdated={() => setShowSettings(false)}
+      />
     </>
   );
 };

@@ -101,7 +101,7 @@ const ModalidadDetalle = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const effectiveRole = user?.role || (user?.is_superuser ? 'admin' : null);
-  const canManage = ['admin', 'administ'].includes(effectiveRole);
+  const canManage = ['admin'].includes(effectiveRole);
   const isStudent = effectiveRole === 'estudiante';
 
   const [modalidad, setModalidad] = useState(null);

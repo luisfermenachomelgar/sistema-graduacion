@@ -89,7 +89,7 @@ const AppRouter = () => {
         <Route
           path="/modalidades"
           element={
-            <ProtectedRoute requiredRole={['admin', 'administ', 'estudiante']}>
+            <ProtectedRoute requiredRole={['admin', 'estudiante']}>
               <AdminLayout>
                 <Modalidades />
               </AdminLayout>
@@ -122,7 +122,7 @@ const AppRouter = () => {
         <Route
           path="/reportes"
           element={
-            <ProtectedRoute requiredRole={['admin', 'administ']}>
+            <ProtectedRoute requiredRole={['admin']}>
               <AdminLayout>
                 <Reportes />
               </AdminLayout>

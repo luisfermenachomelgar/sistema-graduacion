@@ -22,7 +22,6 @@ API_BASE = f"{BACKEND_URL}/api"
 # Test users
 TEST_USERS = {
     "admin": {"username": "admin_test", "password": "test123", "role": "admin"},
-    "administ": {"username": "administ_test", "password": "test123", "role": "administ"},
     "estudiante": {"username": "estudiante_test", "password": "test123", "role": "estudiante"},
 }
 

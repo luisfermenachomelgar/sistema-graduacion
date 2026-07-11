@@ -30,16 +30,6 @@ def create_test_users():
             'is_superuser': True,
         },
         {
-            'username': 'administ',
-            'password': 'password',
-            'email': 'administ@example.com',
-            'first_name': 'Administrativo',
-            'last_name': 'User',
-            'role': 'administ',
-            'is_staff': False,
-            'is_superuser': False,
-        },
-        {
             'username': 'estudiante',
             'password': 'password',
             'email': 'estudiante@example.com',

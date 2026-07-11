@@ -24,34 +24,34 @@ const Sidebar = () => {
       label: 'Inicio',
       href: '/dashboard',
       badge: null,
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
     {
       icon: Users,
       label: 'Postulantes',
       href: '/postulantes',
       badge: null,
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
     {
       icon: Clipboard,
       label: 'Postulaciones',
       href: '/postulaciones',
       badge: null,
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       icon: FileCheck,
       label: 'Documentos',
       href: '/documentos',
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       icon: BookOpen,
       label: 'Modalidades',
       href: '/modalidades',
       badge: null,
-      roles: ['admin', 'administ', 'estudiante'],
+      roles: ['admin', 'estudiante'],
     },
     {
       icon: Shield,
@@ -65,7 +65,7 @@ const Sidebar = () => {
       label: 'Reportes',
       href: '/reportes',
       badge: null,
-      roles: ['admin', 'administ'],
+      roles: ['admin'],
     },
   ];
 

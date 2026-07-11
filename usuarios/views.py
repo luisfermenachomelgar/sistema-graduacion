@@ -1,11 +1,28 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import CustomUser
-from .serializers import LoginSerializer, CustomUserSerializer, CustomUserDetailSerializer
+from .serializers import CustomUserSerializer, CustomUserDetailSerializer, LoginSerializer
+
+
+class IsAdminOrSelf(BasePermission):
+    """Permite acceso de lectura/edición al propio usuario y de administración a todos."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if view.action in ['list', 'create', 'destroy']:
+            return bool(request.user.is_staff or request.user.is_superuser)
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        return obj.pk == request.user.pk
 
 
 class LoginView(TokenObtainPairView):
@@ -15,22 +32,29 @@ class LoginView(TokenObtainPairView):
 class CustomUserViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar usuarios del sistema.
-    Solo administradores pueden ver, crear, editar o eliminar usuarios.
+    Permite a cada usuario acceder y editar su propio perfil, mientras que los administradores
+    mantienen acceso completo al módulo de usuarios.
     """
     queryset = CustomUser.objects.all()
-    permission_classes = [IsAdminUser]
-    
+    permission_classes = [IsAdminOrSelf]
+
     def get_serializer_class(self):
         """Retorna diferentes serializadores según la acción."""
         if self.action in ['list', 'retrieve']:
             return CustomUserDetailSerializer
         return CustomUserSerializer
-    
+
     def create(self, request, *args, **kwargs):
         """Crear nuevo usuario con password."""
         # Evitar crear nuevas cuentas maestras (basado en is_superuser)
         trying_master = bool(request.data.get('is_superuser'))
         master_exists = CustomUser.objects.filter(is_superuser=True).exists()
+
+        role = request.data.get('role', 'estudiante')
+        if role == 'administ':
+            role = 'admin'
+        if role not in dict(CustomUser.ROLE_CHOICES):
+            return Response({'role': 'Rol inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if trying_master and master_exists:
             return Response(
@@ -54,7 +78,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 last_name=serializer.validated_data.get('last_name', ''),
                 is_staff=request.data.get('is_staff', False),
                 is_active=request.data.get('is_active', True),
-                role=request.data.get('role', 'estudiante'),
+                role=role,
             )
             user.set_password(password)
             user.save()
@@ -78,6 +102,15 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         else:
             data = request.data
         
+        role = data.get('role', instance.role)
+        if role == 'administ':
+            role = 'admin'
+        if role not in dict(CustomUser.ROLE_CHOICES):
+            return Response({'role': 'Rol inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'role' in data:
+            data['role'] = role
+
         # Protección específica para la cuenta maestra (basada en is_superuser)
         is_super = bool(instance.is_superuser)
         if is_super:

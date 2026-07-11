@@ -117,7 +117,6 @@ export const API_CONFIG = {
 
 export const ROLE_TYPES = {
   ADMIN: 'admin',
-  ADMINISTRATIVO: 'administ',
   ESTUDIANTE: 'estudiante',
 };
 

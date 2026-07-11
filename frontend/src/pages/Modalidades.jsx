@@ -18,7 +18,7 @@ const Modalidades = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const effectiveRole = user?.role || (user?.is_superuser ? 'admin' : null);
-  const canManage = ['admin', 'administ'].includes(effectiveRole);
+  const canManage = ['admin'].includes(effectiveRole);
 
   const {
     data: modalidades,
@@ -205,15 +205,6 @@ const Modalidades = () => {
                         </button>
                       )}
 
-                      {canManage && (
-                        <button
-                          onClick={() => handleDelete(modalidad.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-rose-500/15 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-500/25 hover:bg-rose-500/15 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/20 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15 dark:hover:text-rose-200"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Eliminar
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>

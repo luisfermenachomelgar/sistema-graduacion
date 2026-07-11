@@ -33,16 +33,6 @@ if __name__ == '__main__':
         # Try to create other users
         users = [
             {
-                'username': 'administ',
-                'password': 'password',
-                'email': 'administ@example.com',
-                'first_name': 'Administrativo',
-                'last_name': 'User',
-                'role': 'administ',
-                'is_staff': False,
-                'is_superuser': False,
-            },
-            {
                 'username': 'estudiante',
                 'password': 'password',
                 'email': 'estudiante@example.com',

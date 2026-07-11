@@ -62,6 +62,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
             if 'is_superuser' in attrs and not bool(attrs.get('is_superuser')):
                 raise serializers.ValidationError({'is_superuser': 'La cuenta maestra del sistema no puede perder privilegios de superusuario.'})
 
+        if 'role' in attrs and attrs.get('role') not in dict(CustomUser.ROLE_CHOICES):
+            raise serializers.ValidationError({'role': 'Rol inválido.'})
+
         return attrs
 
 

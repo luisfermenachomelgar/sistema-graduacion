@@ -8,7 +8,6 @@ from usuarios.models import CustomUser
 # Test si los usuarios existen, si no, crearlos
 test_credentials = {
     "admin_test": ("test123", "admin"),
-    "administ_test": ("test123", "administ"),
     "estudiante_test": ("test123", "estudiante"),
 }
 
@@ -18,7 +17,7 @@ for username, (password, role) in test_credentials.items():
         username=username,
         defaults={
             "role": role,
-            "is_staff": role in ["admin", "administ"],
+            "is_staff": role == "admin",
             "is_active": True,
         }
     )
