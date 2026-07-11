@@ -10,16 +10,18 @@ import axiosInstance from '../api/axios';
 import { API_CONFIG } from '../constants/api';
 import Alert from '../components/Alert';
 import Table from '../components/Table';
-import { AlertCircle, Download } from 'lucide-react';
+import StatsCards from '../components/StatsCards';
+import { AlertCircle, Download, TrendingUp, CheckCircle, Zap } from 'lucide-react';
 
 const POSTULACIONES_TAB = 'postulaciones';
 const POSTULACIONES_PAGE_SIZE = 20;
 
 const Reportes = () => {
   const [reportData, setReportData] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('tutores');
   const [exportingTutores, setExportingTutores] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [postulaciones, setPostulaciones] = useState([]);
@@ -51,6 +53,25 @@ const Reportes = () => {
       fetchReportData();
     }
   }, [activeTab]);
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const result = await api.getAll(API_CONFIG.ENDPOINTS.DASHBOARD_GENERAL, {}, { skipGlobalLoader: true });
+      if (result.success) {
+        setDashboardStats(result.data);
+      } else {
+        console.error('Error loading dashboard stats:', result.error);
+      }
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === POSTULACIONES_TAB) {
+      fetchDashboardStats();
+    }
+  }, [activeTab, fetchDashboardStats]);
 
   const fetchPostulaciones = useCallback(async (params = {}) => {
     setPostulacionesLoading(true);
@@ -219,18 +240,18 @@ const Reportes = () => {
           </div>
         </div>
 
-        {/* Documentos Pendientes */}
+        {/* Modalidades Disponibles */}
         <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Documentos Pendientes
+                Modalidades Disponibles
               </p>
               <p className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">
-                {reportData.documentos_pendientes || 0}
+                {reportData.total_modalidades || 0}
               </p>
             </div>
-            <div className="text-4xl">⏳</div>
+            <div className="text-4xl">🎓</div>
           </div>
         </div>
 
@@ -300,16 +321,13 @@ const Reportes = () => {
                   Tutor
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  Aprobados
+                  Modalidades Finalizadas
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  Rechazados
+                  Modalidades Rechazadas
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  Total
-                </th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  % Aprobación
+                  Total Asignadas
                 </th>
               </tr>
             </thead>
@@ -323,19 +341,13 @@ const Reportes = () => {
                     {tutor.tutor_nombre || 'Sin datos'}
                   </td>
                   <td className={`py-3 px-4 text-center font-medium text-green-600 dark:text-green-400`}>
-                    {tutor.aprobados || 0}
+                    {tutor.modalidades_finalizadas || 0}
                   </td>
                   <td className={`py-3 px-4 text-center font-medium text-red-600 dark:text-red-400`}>
                     {tutor.rechazados || 0}
                   </td>
                   <td className="py-3 px-4 text-center font-semibold text-gray-900 dark:text-white">
-                    {(tutor.aprobados || 0) + (tutor.rechazados || 0)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">
-                    {tutor.total_procesados > 0
-                      ? ((tutor.aprobados / tutor.total_procesados) * 100).toFixed(1)
-                      : 0}
-                    %
+                    {tutor.total_asignadas || 0}
                   </td>
                 </tr>
               ))}
@@ -346,34 +358,7 @@ const Reportes = () => {
     );
   };
 
-  const renderPostulacionesSummary = () => {
-    if (!postulacionesSummary) return null;
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Postulaciones</p>
-          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_postulaciones ?? 0}</p>
-        </div>
-        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Titulado</p>
-          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_titulados ?? 0}</p>
-        </div>
-        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En Proceso</p>
-          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_en_proceso ?? 0}</p>
-        </div>
-        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Aprobadas</p>
-          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_aprobadas ?? 0}</p>
-        </div>
-        <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Rechazadas</p>
-          <p className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{postulacionesSummary.total_rechazadas ?? 0}</p>
-        </div>
-      </div>
-    );
-  };
+  const renderPostulacionesSummary = () => null;
 
   const renderPostulacionesEstadoGeneral = () => {
     if (!postulacionesSummary?.estado_general_counts) return null;
@@ -414,7 +399,6 @@ const Reportes = () => {
           </span>
         ),
       },
-      { key: 'estado_general', label: 'Estado General' },
       { key: 'fecha_postulacion', label: 'Fecha' },
     ];
 
@@ -656,7 +640,6 @@ const Reportes = () => {
         {/* Tabs */}
         <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700">
           {[
-            { id: 'general', label: 'General', icon: '📊' },
             { id: 'tutores', label: 'Tutores', icon: '👨‍🏫' },
             { id: POSTULACIONES_TAB, label: 'Postulaciones', icon: '📑' },
             { id: 'carreras', label: 'Carreras', icon: '🎓' },
@@ -741,7 +724,33 @@ const Reportes = () => {
                 autoClose={false}
               />
             )}
-            {renderPostulacionesSummary()}
+            <StatsCards
+              cards={[
+                {
+                  title: 'Total Postulaciones',
+                  value: dashboardStats?.total_postulaciones || 0,
+                  change: 0,
+                  Icon: TrendingUp,
+                  color: 'cyan',
+                },
+                {
+                  title: 'Modalidades Finalizadas',
+                  value: dashboardStats?.modalidades_finalizadas || 0,
+                  change: 0,
+                  Icon: CheckCircle,
+                  color: 'green',
+                },
+                {
+                  title: 'Modalidades Disponibles',
+                  value: dashboardStats?.total_modalidades || 0,
+                  change: 0,
+                  Icon: Zap,
+                  color: 'purple',
+                },
+              ]}
+              gridClass="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
+              compact
+            />
             {renderPostulacionesEstadoGeneral()}
             {renderPostulacionesTable()}
             <div className="mt-8 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">

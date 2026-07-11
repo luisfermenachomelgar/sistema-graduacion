@@ -96,6 +96,7 @@ class AvanzarPostulacionTests(TestCase):
         resultado = avanzar_postulacion(postulacion.id)
 
         self.assertEqual(resultado.estado_general, 'FINALIZADA')
+        self.assertIsNone(resultado.etapa_actual_id)
 
     def test_examen_grado_finalizado_no_permite_avanzar(self):
         modalidad = Modalidad.objects.create(nombre='EXAMEN DE GRADO')
@@ -111,7 +112,7 @@ class AvanzarPostulacionTests(TestCase):
 
         with self.assertRaisesMessage(
             EtapaIncompletaError,
-            'La postulación ya finalizó el proceso de Examen de Grado.',
+            'La postulación ya está finalizada.',
         ):
             avanzar_postulacion(postulacion.id)
 
@@ -252,3 +253,39 @@ class AvanzarPostulacionTests(TestCase):
         resultado = finalizar_postulacion_si_corresponde(postulacion)
 
         self.assertEqual(resultado.estado_general, 'FINALIZADA')
+
+    def test_proyecto_grado_avanza_etapa_final_con_acta_configurada_para_su_modalidad(self):
+        modalidad = Modalidad.objects.create(nombre='PROYECTO DE GRADO')
+        etapa_final = Etapa.objects.create(modalidad=modalidad, nombre='Acta Final', orden=1, activo=True)
+        acta_proyecto = TipoDocumento.objects.create(
+            nombre='Acta de Defensa del Proyecto de Grado',
+            obligatorio=True,
+            activo=True,
+        )
+        ModalidadTipoDocumento.objects.create(
+            modalidad=modalidad,
+            tipo_documento=acta_proyecto,
+            etapa=etapa_final,
+            obligatorio=True,
+            activo=True,
+            orden=1,
+        )
+        postulacion = Postulacion.objects.create(
+            postulante=self.postulante,
+            modalidad=modalidad,
+            etapa_actual=etapa_final,
+            titulo_trabajo='Trabajo de proyecto',
+            gestion=2026,
+            estado_general='EN_PROCESO',
+        )
+        DocumentoPostulacion.objects.create(
+            postulacion=postulacion,
+            tipo_documento=acta_proyecto,
+            archivo=SimpleUploadedFile('acta-proyecto.pdf', b'data', content_type='application/pdf'),
+            estado='aprobado',
+        )
+
+        resultado = avanzar_postulacion(postulacion.id)
+
+        self.assertEqual(resultado.estado_general, 'FINALIZADA')
+        self.assertIsNone(resultado.etapa_actual_id)

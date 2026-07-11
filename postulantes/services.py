@@ -8,9 +8,18 @@ from modalidades.models import Etapa
 
 from .models import Postulacion
 
-ACTA_DEFENSA_TIPO_DOCUMENTO_ID = 8
-ACTA_FINAL_EXAMEN_GRADO_NOMBRE = 'Acta Final del Examen de Grado'
-ACTA_FINAL_EXAMEN_GRADO_ETAPA_NOMBRE = 'ACTA FINAL'
+ESTADO_GENERAL_FINALIZADA = 'FINALIZADA'
+
+
+def condicion_postulacion_finalizada() -> Q:
+    """Predicado canónico para consultar modalidades finalizadas.
+
+    El flujo de postulaciones asigna este estado cuando una modalidad llega a
+    su finalización. Los consumidores de datos (como reportes) deben usar esta
+    función en lugar de inferir la finalización desde el nombre u orden de una
+    etapa.
+    """
+    return Q(estado_general=ESTADO_GENERAL_FINALIZADA)
 
 
 def es_registro_historico(postulacion: Postulacion) -> bool:
@@ -49,7 +58,7 @@ def finalizar_postulacion_si_corresponde(postulacion: Postulacion, *, actor=None
     missing_docs = required_documents_missing_for_historical_flow(postulacion)
 
     if missing_docs:
-        if estado_general_anterior == 'FINALIZADA':
+        if estado_general_anterior == ESTADO_GENERAL_FINALIZADA:
             postulacion.estado_general = 'EN_PROCESO'
             postulacion.save(update_fields=['estado_general'])
             if estado_general_anterior != postulacion.estado_general:
@@ -64,10 +73,10 @@ def finalizar_postulacion_si_corresponde(postulacion: Postulacion, *, actor=None
                 )
         return postulacion
 
-    if estado_general_anterior == 'FINALIZADA':
+    if estado_general_anterior == ESTADO_GENERAL_FINALIZADA:
         return postulacion
 
-    postulacion.estado_general = 'FINALIZADA'
+    postulacion.estado_general = ESTADO_GENERAL_FINALIZADA
     postulacion.save(update_fields=['estado_general'])
 
     if estado_general_anterior != postulacion.estado_general:
@@ -96,18 +105,7 @@ class EtapaIncompletaError(serializers.ValidationError):
     pass
 
 
-def es_modalidad_examen_grado(postulacion: Postulacion) -> bool:
-    modalidad_nombre = (getattr(postulacion.modalidad, 'nombre', '') or '').strip().upper()
-    return modalidad_nombre == 'EXAMEN DE GRADO'
-
-
-def requiere_acta_defensa_para_titulado(postulacion: Postulacion) -> bool:
-    return not es_modalidad_examen_grado(postulacion)
-
-
-def resolve_estado_general(etapa: Etapa | None, *, is_final: bool = False) -> str:
-    if is_final:
-        return 'TITULADO'
+def resolve_estado_general(etapa: Etapa | None) -> str:
     if not etapa:
         return 'EN_PROCESO'
     return ESTADO_GENERAL_BY_ORDEN.get(etapa.orden, 'EN_PROCESO')
@@ -144,6 +142,46 @@ def required_documents_missing(postulacion: Postulacion) -> list[dict]:
     return missing
 
 
+def finalizar_postulacion_por_avance(
+    postulacion: Postulacion,
+    *,
+    etapa_anterior: Etapa,
+    estado_general_anterior: str,
+    actor=None,
+) -> Postulacion:
+    """Finaliza una postulación que llegó a la última etapa de su modalidad."""
+    postulacion.etapa_actual = None
+    postulacion.estado_general = ESTADO_GENERAL_FINALIZADA
+    postulacion.save(update_fields=['etapa_actual', 'estado_general'])
+
+    registrar_auditoria(
+        usuario=actor,
+        accion='CAMBIO_ETAPA',
+        modelo_afectado='Postulacion',
+        objeto_id=postulacion.id,
+        estado_anterior={
+            'etapa_id': etapa_anterior.id,
+            'etapa_nombre': etapa_anterior.nombre,
+        },
+        estado_nuevo={
+            'etapa_id': None,
+            'etapa_nombre': None,
+        },
+        detalles={'modalidad_id': postulacion.modalidad_id, 'motivo': 'finalizacion_modalidad'},
+    )
+    if estado_general_anterior != postulacion.estado_general:
+        registrar_auditoria(
+            usuario=actor,
+            accion='CAMBIO_ESTADO_GENERAL',
+            modelo_afectado='Postulacion',
+            objeto_id=postulacion.id,
+            estado_anterior={'estado_general': estado_general_anterior},
+            estado_nuevo={'estado_general': postulacion.estado_general},
+            detalles={'motivo': 'finalizacion_modalidad'},
+        )
+    return postulacion
+
+
 @transaction.atomic
 def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
     postulacion = (
@@ -154,12 +192,10 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
     etapa_anterior = postulacion.etapa_actual
     estado_general_anterior = postulacion.estado_general
 
-    if postulacion.estado_general == 'FINALIZADA':
+    if postulacion.estado_general == ESTADO_GENERAL_FINALIZADA:
         raise EtapaIncompletaError(
             {
-                'detail': 'La postulación ya finalizó el proceso de Examen de Grado.'
-                if es_modalidad_examen_grado(postulacion)
-                else 'La postulación ya está finalizada.',
+                'detail': 'La postulación ya está finalizada.',
             }
         )
 
@@ -167,34 +203,6 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
         raise serializers.ValidationError(
             {'etapa_actual': 'La postulacion no tiene etapa actual configurada.'}
         )
-
-    etapa_actual_nombre = (postulacion.etapa_actual.nombre or '').strip().upper()
-    if es_modalidad_examen_grado(postulacion) and etapa_actual_nombre == ACTA_FINAL_EXAMEN_GRADO_ETAPA_NOMBRE:
-        has_acta_final = DocumentoPostulacion.objects.filter(
-            postulacion_id=postulacion.id,
-            tipo_documento__nombre__iexact=ACTA_FINAL_EXAMEN_GRADO_NOMBRE,
-            estado='aprobado',
-        ).exists()
-        if not has_acta_final:
-            raise EtapaIncompletaError(
-                {
-                    'detail': 'No se puede finalizar el Examen de Grado. Falta el Acta Final del Examen de Grado aprobada.',
-                }
-            )
-
-        postulacion.estado_general = 'FINALIZADA'
-        postulacion.save(update_fields=['estado_general'])
-        if estado_general_anterior != postulacion.estado_general:
-            registrar_auditoria(
-                usuario=actor,
-                accion='CAMBIO_ESTADO_GENERAL',
-                modelo_afectado='Postulacion',
-                objeto_id=postulacion.id,
-                estado_anterior={'estado_general': estado_general_anterior},
-                estado_nuevo={'estado_general': postulacion.estado_general},
-                detalles={'motivo': 'finalizacion_examen_grado'},
-            )
-        return postulacion
 
     missing_docs = required_documents_missing(postulacion)
     if missing_docs:
@@ -215,20 +223,6 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
         .order_by('orden')
         .first()
     )
-
-    if next_stage is None:
-        if requiere_acta_defensa_para_titulado(postulacion):
-            has_acta_defensa = DocumentoPostulacion.objects.filter(
-                postulacion_id=postulacion.id,
-                tipo_documento_id=ACTA_DEFENSA_TIPO_DOCUMENTO_ID,
-                estado='aprobado',
-            ).exists()
-            if not has_acta_defensa:
-                raise EtapaIncompletaError(
-                    {
-                        'detail': 'No se puede avanzar a TITULADO. Falta el Acta de Defensa de Tesis o de Modalidad de Graduación aprobada.',
-                    }
-                )
 
     if next_stage:
         postulacion.etapa_actual = next_stage
@@ -261,16 +255,9 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
             )
         return postulacion
 
-    postulacion.estado_general = resolve_estado_general(postulacion.etapa_actual, is_final=True)
-    postulacion.save(update_fields=['estado_general'])
-    if estado_general_anterior != postulacion.estado_general:
-        registrar_auditoria(
-            usuario=actor,
-            accion='CAMBIO_ESTADO_GENERAL',
-            modelo_afectado='Postulacion',
-            objeto_id=postulacion.id,
-            estado_anterior={'estado_general': estado_general_anterior},
-            estado_nuevo={'estado_general': postulacion.estado_general},
-            detalles={'motivo': 'proceso_completado'},
-        )
-    return postulacion
+    return finalizar_postulacion_por_avance(
+        postulacion,
+        etapa_anterior=etapa_anterior,
+        estado_general_anterior=estado_general_anterior,
+        actor=actor,
+    )

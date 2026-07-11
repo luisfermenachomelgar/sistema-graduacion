@@ -19,8 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN addgroup --system app && adduser --system --ingroup app app \
-    && mkdir -p /app/staticfiles /app/media \
-    && chown -R app:app /app
+    && mkdir -p /app/staticfiles /app/media /app/logs \
+    && chown app:app /app/staticfiles /app/media \
+    && chown -R app:app /app/logs
 
 USER app
 

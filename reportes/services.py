@@ -16,6 +16,7 @@ from openpyxl.utils import get_column_letter
 from documentos.models import DocumentoPostulacion
 from modalidades.models import Modalidad
 from postulantes.models import Postulacion, Postulante
+from postulantes.services import condicion_postulacion_finalizada
 
 
 def porcentaje_avance_postulacion(postulacion_id: int) -> float:
@@ -836,10 +837,10 @@ def generar_pdf_dashboard(data: dict, fecha_inicio: str | None, fecha_fin: str |
 
 def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
     """
-    Calcula estadísticas de rendimiento de tutores:
-    - Aprobados/rechazados por tutor.
-    - Total procesados.
-    - Porcentaje de aprobación.
+    Calcula estadísticas de rendimiento de tutores basadas en las postulaciones actuales:
+    - Modalidades Finalizadas según la misma condición del flujo de postulaciones.
+    - Modalidades Rechazadas según estado='rechazada'.
+    - Total Asignadas = conteo de todas las postulaciones asignadas al tutor.
     """
     try:
         queryset = Postulacion.objects.exclude(tutor__isnull=True).exclude(tutor='')
@@ -862,32 +863,32 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
         stats = (
             queryset.values('tutor')
             .annotate(
-                aprobados=Count('id', filter=Q(estado='aprobada')),
+                # Reutiliza la regla canónica que utiliza el flujo para marcar
+                # una postulación como finalizada. No depende del nombre de etapa.
+                modalidades_finalizadas=Count(
+                    'id',
+                    filter=condicion_postulacion_finalizada(),
+                ),
                 rechazados=Count('id', filter=Q(estado='rechazada')),
-                total_procesados=Count('id', filter=Q(estado__in=['aprobada', 'rechazada'])),
+                total_asignadas=Count('id'),
             )
-            .order_by('-total_procesados')
+            .order_by('-modalidades_finalizadas', '-total_asignadas')
         )
 
         results = []
         for item in stats:
             try:
                 tutor_nombre = (item.get('tutor') or '').strip()
-                aprobados = int(item.get('aprobados') or 0)
+                modalidades_finalizadas = int(item.get('modalidades_finalizadas') or 0)
                 rechazados = int(item.get('rechazados') or 0)
-                total_procesados = int(item.get('total_procesados') or 0)
-
-                aprobacion_porcentaje = 0.0
-                if total_procesados > 0:
-                    aprobacion_porcentaje = round((aprobados / total_procesados) * 100, 1)
+                total_asignadas = int(item.get('total_asignadas') or 0)
 
                 results.append({
                     'tutor_id': _tutor_hash(tutor_nombre),
                     'tutor_nombre': tutor_nombre,
-                    'aprobados': aprobados,
+                    'modalidades_finalizadas': modalidades_finalizadas,
                     'rechazados': rechazados,
-                    'total_procesados': total_procesados,
-                    'aprobacion_porcentaje': aprobacion_porcentaje,
+                    'total_asignadas': total_asignadas,
                 })
             except Exception as e:
                 print(f"⚠️ Error procesando item de tutor (aprob/rech): {e}")
@@ -1128,7 +1129,7 @@ def generar_excel_tutores(data: list[dict]) -> HttpResponse:
     ws.title = "Rendimiento Tutores"
 
     # Encabezados
-    headers = ["Tutor", "Aprobados", "Rechazados", "Total", "% Aprobación"]
+    headers = ["Tutor", "Modalidades Finalizadas", "Modalidades Rechazadas", "Total Asignadas"]
     ws.append(headers)
 
     # Estilo de encabezados
@@ -1144,18 +1145,15 @@ def generar_excel_tutores(data: list[dict]) -> HttpResponse:
     for item in data:
         try:
             tutor_nombre = item.get('tutor_nombre') or item.get('nombre') or ''
-            aprobados = int(item.get('aprobados') or 0)
+            modalidades_finalizadas = int(item.get('modalidades_finalizadas') or 0)
             rechazados = int(item.get('rechazados') or 0)
-            total = int(item.get('total_procesados') or (aprobados + rechazados))
-            porcentaje = item.get('aprobacion_porcentaje')
-            porcentaje_display = f"{round(float(porcentaje), 1)}%" if porcentaje is not None else "0%"
+            total_asignadas = int(item.get('total_asignadas') or 0)
 
             ws.append([
                 tutor_nombre,
-                aprobados,
+                modalidades_finalizadas,
                 rechazados,
-                total,
-                porcentaje_display
+                total_asignadas
             ])
         except (KeyError, TypeError, ValueError) as e:
             print(f"⚠️ Error procesando item de tutor para Excel: {e}")

@@ -3,7 +3,8 @@ from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 
 from postulantes.models import Postulacion, Postulante
-from modalidades.models import Modalidad
+from modalidades.models import Modalidad, Etapa
+from reportes.services import estadisticas_tutores
 
 User = get_user_model()
 
@@ -100,3 +101,60 @@ class ReporteGeneralPostulacionesTests(TestCase):
         data = response.json()
         self.assertEqual(data.get('count'), 1)
         self.assertEqual(data['results'][0]['postulante_carrera'], 'Arquitectura')
+
+    def test_estadisticas_tutores_cuenta_modalidad_finalizada_por_regla_del_flujo(self):
+        etapa_finalizada = Etapa.objects.create(
+            nombre='Acta Final',
+            orden=10,
+            modalidad=self.modalidad_a,
+            activo=True,
+        )
+
+        Postulacion.objects.create(
+            postulante=self.postulante_a,
+            modalidad=self.modalidad_a,
+            etapa_actual=etapa_finalizada,
+            titulo_trabajo='Trabajo Finalizado',
+            tutor='Tutor Uno',
+            anio_academico=2025,
+            semestre_academico=2,
+            estado='aprobada',
+            estado_general='FINALIZADA',
+        )
+
+        data = estadisticas_tutores()
+
+        tutores = {item['tutor_nombre']: item for item in data}
+
+        self.assertEqual(tutores['Tutor Uno']['modalidades_finalizadas'], 1)
+        self.assertEqual(tutores['Tutor Uno']['rechazados'], 0)
+        self.assertEqual(tutores['Tutor Uno']['total_asignadas'], 2)
+        self.assertEqual(tutores['Tutor Dos']['modalidades_finalizadas'], 0)
+        self.assertEqual(tutores['Tutor Dos']['rechazados'], 1)
+        self.assertEqual(tutores['Tutor Dos']['total_asignadas'], 1)
+
+    def test_estadisticas_tutores_no_cuenta_estados_distintos_de_finalizada(self):
+        etapa_no_final = Etapa.objects.create(
+            nombre='Registro',
+            orden=10,
+            modalidad=self.modalidad_a,
+            activo=True,
+        )
+
+        Postulacion.objects.create(
+            postulante=self.postulante_b,
+            modalidad=self.modalidad_a,
+            etapa_actual=etapa_no_final,
+            titulo_trabajo='Trabajo No Finalizado',
+            tutor='Tutor Uno',
+            anio_academico=2025,
+            semestre_academico=2,
+            estado='aprobada',
+            estado_general='TITULADO',
+        )
+
+        data = estadisticas_tutores()
+
+        tutor_uno = next(item for item in data if item['tutor_nombre'] == 'Tutor Uno')
+        self.assertEqual(tutor_uno['modalidades_finalizadas'], 0)
+        self.assertEqual(tutor_uno['total_asignadas'], 2)

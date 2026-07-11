@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Users, FileText, CheckCircle, Zap } from 'lucide-react';
 
-const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8' }) => {
+const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8', compact = false }) => {
   const defaultStats = {
     totalPostulantes: { value: 0, change: 0, icon: Users, color: 'blue' },
     modalidadesFinalizadas: { value: 0, change: 0, icon: CheckCircle, color: 'green' },
@@ -66,16 +66,16 @@ const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:g
     const isNumericValue = typeof value === 'number';
 
     return (
-      <div className="group overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+      <div className={`group overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 ${compact ? 'hover:-translate-y-0 hover:shadow-sm' : 'hover:-translate-y-1 hover:shadow-lg'} dark:border-gray-700 dark:bg-gray-800`}>
         <div className={`h-1 bg-gradient-to-r ${colorClass}`} />
 
-        <div className="p-6">
+        <div className={`${compact ? 'p-4' : 'p-6'}`}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className={`mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 ${compact ? 'leading-tight' : ''}`}>
                 {title}
               </p>
-              <h3 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h3 className={`mb-4 ${compact ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 dark:text-white`}>
                 {isNumericValue ? value : String(value)}
                 {suffix}
               </h3>
@@ -99,8 +99,8 @@ const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:g
             </div>
 
             {/* Icono */}
-            <div className={`${bgColorClass} rounded-xl p-3 transition-transform group-hover:scale-110`}>
-              <Icon className="w-6 h-6" />
+            <div className={`${bgColorClass} rounded-xl ${compact ? 'p-2' : 'p-3'} transition-transform group-hover:scale-110`}>
+              <Icon className={`${compact ? 'w-5 h-5' : 'w-6 h-6'}`} />
             </div>
           </div>
         </div>
