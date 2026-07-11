@@ -11,7 +11,7 @@ import { PageHeader } from '../components';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api/api';
 import { API_CONFIG } from '../constants/api';
-import { AlertCircle, LoaderCircle, TrendingUp, CheckCircle, Zap } from 'lucide-react';
+import { AlertCircle, LoaderCircle, TrendingUp, CheckCircle, Zap, Users } from 'lucide-react';
 
 const DASHBOARD_CACHE_TTL = 2 * 60 * 1000;
 
@@ -29,8 +29,6 @@ let dashboardCache = {
   postulantesRecientes: [],
   ultimasPostulaciones: [],
   ultimosDocumentos: [],
-  barChartData: null,
-  lineChartData: null,
   pieChartData: null,
   metrics: null,
 };
@@ -44,8 +42,6 @@ const Dashboard = () => {
   const [postulantesRecientes, setPostulantesRecientes] = useState(dashboardCache.postulantesRecientes || []);
   const [ultimasPostulaciones, setUltimasPostulaciones] = useState(dashboardCache.ultimasPostulaciones || []);
   const [ultimosDocumentos, setUltimosDocumentos] = useState(dashboardCache.ultimosDocumentos || []);
-  const [barChartData, setBarChartData] = useState(dashboardCache.barChartData);
-  const [lineChartData, setLineChartData] = useState(dashboardCache.lineChartData);
   const [pieChartData, setPieChartData] = useState(dashboardCache.pieChartData);
   const [metrics, setMetrics] = useState(dashboardCache.metrics || DEFAULT_METRICS);
   const [loading, setLoading] = useState(!isCacheFresh);
@@ -98,18 +94,9 @@ const Dashboard = () => {
       render: (value) => value || '-',
     },
     {
-      key: 'estado_general',
-      label: 'Estado',
-      render: (value) => {
-        const badgeClass = {
-          'EN_PROCESO': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-          'PERFIL_APROBADO': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-          'PRIVADA_APROBADA': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
-          'PUBLICA_APROBADA': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200',
-          'TITULADO': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200',
-        }[value] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200';
-        return <span className={`px-2 py-1 rounded text-sm font-medium ${badgeClass}`}>{value || '-'}</span>;
-      },
+      key: 'etapa_nombre',
+      label: 'Etapa Actual',
+      render: (_, row) => row?.etapa_nombre || 'Modalidad Finalizada',
     },
     {
       key: 'fecha_postulacion',
@@ -176,8 +163,6 @@ const Dashboard = () => {
         postulantesRecientes: [],
         ultimasPostulaciones: [],
         ultimosDocumentos: [],
-        barChartData: null,
-        lineChartData: null,
         pieChartData: null,
         metrics: null,
       };
@@ -198,14 +183,6 @@ const Dashboard = () => {
 
     if (dashboardCache.ultimosDocumentos?.length) {
       setUltimosDocumentos(dashboardCache.ultimosDocumentos);
-    }
-
-    if (dashboardCache.barChartData) {
-      setBarChartData(dashboardCache.barChartData);
-    }
-
-    if (dashboardCache.lineChartData) {
-      setLineChartData(dashboardCache.lineChartData);
     }
 
     if (dashboardCache.pieChartData) {
@@ -306,16 +283,12 @@ const Dashboard = () => {
       if (chartResponse.ok) {
         const chartData = await chartResponse.json();
         const normalizedMetrics = normalizeMetrics(chartData);
-        setBarChartData(chartData.barChartData);
-        setLineChartData(chartData.lineChartData);
         setPieChartData(chartData.pieChartData);
         setMetrics(normalizedMetrics);
         dashboardCache = {
           ...dashboardCache,
           token,
           timestamp: Date.now(),
-          barChartData: chartData.barChartData,
-          lineChartData: chartData.lineChartData,
           pieChartData: chartData.pieChartData,
           metrics: normalizedMetrics,
         };
@@ -382,32 +355,14 @@ const Dashboard = () => {
           <>
             {/* Tarjetas de Estadísticas */}
             <StatsCards
-              stats={dashboardStats ? {
-                totalPostulantes: {
-                  value: dashboardStats.total_postulantes || 0,
-                  change: dashboardStats.cambio_postulantes_porcentaje || 0,
+              cards={[
+                {
+                  title: 'Total Postulantes',
+                  value: dashboardStats?.total_postulantes || 0,
+                  change: dashboardStats?.cambio_postulantes_porcentaje || 0,
+                  Icon: Users,
                   color: 'blue',
                 },
-                documentosPendientes: {
-                  value: dashboardStats.documentos_pendientes || 0,
-                  change: dashboardStats.cambio_documentos_porcentaje || 0,
-                  color: 'yellow',
-                },
-                graduados: {
-                  value: dashboardStats.total_titulados || 0,
-                  change: dashboardStats.cambio_titulados_porcentaje || 0,
-                  color: 'green',
-                },
-                tasaAprobacion: {
-                  value: dashboardStats.tasa_aprobacion || 0,
-                  change: dashboardStats.cambio_tasa_porcentaje || 0,
-                  color: 'purple',
-                },
-              } : {}}
-            />
-
-            <StatsCards
-              cards={[
                 {
                   title: 'Total Postulaciones',
                   value: dashboardStats?.total_postulaciones || 0,
@@ -422,6 +377,19 @@ const Dashboard = () => {
                   Icon: CheckCircle,
                   color: 'green',
                 },
+              ]}
+              gridClass="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8"
+            />
+
+            <StatsCards
+              cards={[
+                {
+                  title: 'Modalidades Finalizadas',
+                  value: dashboardStats?.modalidades_finalizadas || 0,
+                  change: 0,
+                  Icon: CheckCircle,
+                  color: 'green',
+                },
                 {
                   title: 'Modalidades Disponibles',
                   value: dashboardStats?.total_modalidades || 0,
@@ -430,14 +398,12 @@ const Dashboard = () => {
                   color: 'purple',
                 },
               ]}
-              gridClass="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8"
+              gridClass="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
             />
 
             {/* Gráficos */}
             <Charts
               isDark={isDark}
-              barChartData={barChartData}
-              lineChartData={lineChartData}
               pieChartData={pieChartData}
               metrics={metrics}
             />

@@ -269,13 +269,25 @@ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
             print(f"⚠️ Error en postulaciones_por_estado: {e}")
             postulaciones_estado_list = []
         
-        # --- SECCIÓN 4: Total titulados (SAFE) ---
-        total_titulados = 0
+        # --- SECCIÓN 4: Finalizaciones y modalidad líder (SAFE) ---
+        total_finalizadas = 0
+        modalidad_mas_finalizadas = None
         try:
-            total_titulados = Postulacion.objects.filter(estado_general='TITULADO').count() or 0
+            postulaciones_finalizadas = Postulacion.objects.filter(estado_general='FINALIZADA')
+            total_finalizadas = postulaciones_finalizadas.count() or 0
+
+            modalidad_count = (
+                postulaciones_finalizadas
+                .values('modalidad__nombre')
+                .annotate(total=Count('id'))
+                .order_by('-total', 'modalidad__nombre')
+            )
+            if modalidad_count:
+                modalidad_mas_finalizadas = modalidad_count[0].get('modalidad__nombre') or 'Sin modalidad'
         except Exception as e:
-            print(f"⚠️ Error en total_titulados: {e}")
-            total_titulados = 0
+            print(f"⚠️ Error en finalizaciones: {e}")
+            total_finalizadas = 0
+            modalidad_mas_finalizadas = None
 
         # --- SECCIÓN 5: MÉTRICAS CALCULADAS (NUEVAS - FASE 3) ---
         
@@ -283,8 +295,8 @@ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
         tasa_aprobacion = 0.0
         try:
             if total_postulaciones > 0:
-                tasa_aprobacion = round((total_titulados / total_postulaciones) * 100, 2)
-            print(f"✅ Tasa Aprobación: {tasa_aprobacion}% ({total_titulados}/{total_postulaciones})")
+                tasa_aprobacion = round((total_finalizadas / total_postulaciones) * 100, 2)
+            print(f"✅ Tasa Aprobación: {tasa_aprobacion}% ({total_finalizadas}/{total_postulaciones})")
         except Exception as e:
             print(f"⚠️ Error calculando tasa_aprobacion: {e}")
             tasa_aprobacion = 0.0
@@ -500,7 +512,9 @@ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
             'postulaciones_por_etapa': [],
             'documentos_pendientes': int(docs_pendientes),
             'documentos_rechazados': int(docs_rechazados),
-            'total_titulados': int(total_titulados),
+            'total_titulados': int(total_finalizadas),
+            'modalidades_finalizadas': int(total_finalizadas),
+            'modalidad_mas_finalizadas': modalidad_mas_finalizadas or 'Sin modalidad',
             'tiempo_promedio_proceso_dias': promedio_procesamiento_dias,
             # NUEVOS (FASE 3) - Métricas sin hardcode
             'tasa_aprobacion': tasa_aprobacion,
@@ -532,6 +546,8 @@ def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:
             'documentos_pendientes': 0,
             'documentos_rechazados': 0,
             'total_titulados': 0,
+            'modalidades_finalizadas': 0,
+            'modalidad_mas_finalizadas': 'Sin modalidad',
             'tiempo_promedio_proceso_dias': 0.0,
             'tasa_aprobacion': 0.0,
             'promedio_procesamiento_dias': 0.0,
@@ -659,36 +675,51 @@ def get_dashboard_chart_data(meses: int = 6) -> dict:
                 'documentos': int(documento.get('total', 0) or 0),
             })
         
-        # Generar pieChartData (Distribución de Estados)
-        estados_stats = Postulacion.objects.values('estado_general').annotate(
-            total=Count('id')
-        ).order_by('-total')
-        
-        # Mapeo de colores
-        estado_colors = {
-            'TITULADO': '#10b981',       # Green - Completado
-            'APROBADO': '#3b82f6',        # Blue - Por Revisar
-            'EN_PROCESO': '#f59e0b',      # Amber - En Proceso
-            'RECHAZADO': '#ef4444',       # Red - Rechazado
+        # Generar pieChartData (Distribución por etapa actual)
+        etapa_stats = (
+            Postulacion.objects
+            .select_related('etapa_actual')
+            .values('etapa_actual__nombre')
+            .annotate(total=Count('id'))
+            .order_by('-total', 'etapa_actual__nombre')
+        )
+
+        etapa_colors = {
+            'Perfil de Proyecto de Grado': '#3b82f6',
+            'Documento Final': '#8b5cf6',
+            'Defensa Privada': '#10b981',
+            'Defensa Pública': '#f59e0b',
+            'Acta Final': '#ef4444',
         }
-        
-        estado_nombres = {
-            'TITULADO': 'Completado',
-            'APROBADO': 'Por Revisar',
-            'EN_PROCESO': 'En Proceso',
-            'RECHAZADO': 'Rechazado',
-        }
-        
+
+        def normalizar_nombre_etapa(nombre: str | None) -> str:
+            if not nombre:
+                return 'Sin etapa'
+            nombre = str(nombre).strip()
+            mapping = {
+                'PERFIL_PROYECTO_GRADO': 'Perfil de Proyecto de Grado',
+                'PERFIL DE PROYECTO DE GRADO': 'Perfil de Proyecto de Grado',
+                'DOCUMENTO_FINAL': 'Documento Final',
+                'DOCUMENTO FINAL': 'Documento Final',
+                'DEFENSA_PRIVADA': 'Defensa Privada',
+                'DEFENSA PRIVADA': 'Defensa Privada',
+                'DEFENSA_PUBLICA': 'Defensa Pública',
+                'DEFENSA PUBLICA': 'Defensa Pública',
+                'ACTA_FINAL': 'Acta Final',
+                'ACTA FINAL': 'Acta Final',
+            }
+            return mapping.get(nombre.upper(), nombre)
+
         pieChartData = []
-        for estado_item in estados_stats:
-            estado = estado_item.get('estado_general', 'DESCONOCIDO')
-            total = int(estado_item.get('total', 0) or 0)
-            
-            if total > 0:  # Solo incluir si hay registros
+        for etapa_item in etapa_stats:
+            etapa_nombre = normalizar_nombre_etapa(etapa_item.get('etapa_actual__nombre'))
+            total = int(etapa_item.get('total', 0) or 0)
+
+            if total > 0:
                 pieChartData.append({
-                    'name': estado_nombres.get(estado, estado),
+                    'name': etapa_nombre,
                     'value': total,
-                    'color': estado_colors.get(estado, '#6b7280'),  # Gray default
+                    'color': etapa_colors.get(etapa_nombre, '#6b7280'),
                 })
         
         # Si no hay datos, usar valores vacíos pero válidos

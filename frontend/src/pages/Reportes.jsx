@@ -279,14 +279,12 @@ const Reportes = () => {
     );
   };
 
-  const getEstadoBadge = (estado) => {
-    const colors = {
-      borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      en_revision: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      aprobada: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      rechazada: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    };
-    return colors[estado] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  const getEtapaActualLabel = (row) => {
+    const etapaNombre = row?.etapa_nombre || row?.etapa_actual?.nombre || row?.etapa_actual_nombre || '';
+    if (etapaNombre) {
+      return etapaNombre;
+    }
+    return row?.estado_general === 'FINALIZADA' ? 'Modalidad Finalizada' : 'Modalidad Finalizada';
   };
 
   const renderTutoresStats = () => {
@@ -408,11 +406,11 @@ const Reportes = () => {
         render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
       },
       {
-        key: 'estado',
-        label: 'Estado',
-        render: (value, row) => (
-          <span className={`px-2 py-1 rounded text-sm font-medium ${getEstadoBadge(value)}`}>
-            {row.estado_display || value || '-'}
+        key: 'etapa_nombre',
+        label: 'Etapa Actual',
+        render: (_, row) => (
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {getEtapaActualLabel(row) || '-'}
           </span>
         ),
       },

@@ -4,16 +4,12 @@ import { TrendingUp, TrendingDown, Users, FileText, CheckCircle, Zap } from 'luc
 const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8' }) => {
   const defaultStats = {
     totalPostulantes: { value: 0, change: 0, icon: Users, color: 'blue' },
-    documentosPendientes: { value: 0, change: 0, icon: FileText, color: 'yellow' },
-    graduados: { value: 0, change: 0, icon: CheckCircle, color: 'green' },
-    tasaAprobacion: { value: 0, change: 0, icon: Zap, color: 'purple' },
+    modalidadesFinalizadas: { value: 0, change: 0, icon: CheckCircle, color: 'green' },
   };
 
   const titles = {
     totalPostulantes: 'Total Postulantes',
-    documentosPendientes: 'Documentos Pendientes',
-    graduados: 'Graduados',
-    tasaAprobacion: 'Tasa de Aprobación',
+    modalidadesFinalizadas: 'Modalidades Finalizadas',
   };
 
   const getColorClasses = (color) => {
@@ -54,14 +50,20 @@ const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:g
 
   const cardItems = cards.length > 0
     ? cards.map(buildCard)
-    : Object.keys(defaultStats).map((key) => buildCard({
-        title: titles[key],
-        ...defaultStats[key],
-        ...(stats[key] || {}),
-      }));
+    : Object.keys(stats).length > 0
+      ? Object.keys(stats).map((key) => buildCard({
+          title: titles[key] || key,
+          ...defaultStats[key],
+          ...(stats[key] || {}),
+        }))
+      : Object.keys(defaultStats).map((key) => buildCard({
+          title: titles[key],
+          ...defaultStats[key],
+        }));
 
   const StatCard = ({ title, value, change, Icon, colorClass, bgColorClass, suffix }) => {
-    const isPositive = change >= 0;
+    const isPositive = typeof change === 'number' && change >= 0;
+    const isNumericValue = typeof value === 'number';
 
     return (
       <div className="group overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
@@ -74,24 +76,26 @@ const StatsCards = ({ stats = {}, cards = [], gridClass = 'grid grid-cols-1 md:g
                 {title}
               </p>
               <h3 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
-                {value}
+                {isNumericValue ? value : String(value)}
                 {suffix}
               </h3>
 
               {/* Cambio */}
-              <div className="flex items-center gap-2">
-                {isPositive ? (
-                  <TrendingUp className="w-4 h-4 text-green-500" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-red-500" />
-                )}
-                <span className={`text-sm font-semibold ${
-                  isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {isPositive ? '+' : ''}{change}%
-                </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">vs mes anterior</span>
-              </div>
+              {typeof change === 'number' ? (
+                <div className="flex items-center gap-2">
+                  {isPositive ? (
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                  )}
+                  <span className={`text-sm font-semibold ${
+                    isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {isPositive ? '+' : ''}{change}%
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">vs mes anterior</span>
+                </div>
+              ) : null}
             </div>
 
             {/* Icono */}
