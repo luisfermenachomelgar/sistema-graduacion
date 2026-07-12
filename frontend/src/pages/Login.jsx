@@ -82,7 +82,7 @@ const Login = () => {
             <div className="mb-8">
               <p className="text-sm uppercase tracking-[0.3em]" style={{ color: MUTED }}>Bienvenido</p>
               <h2 className="mt-3 text-3xl font-semibold" style={{ color: TEXT_ON_DARK }}>
-                Accede a tu panel institucional
+                Accede a tu panel
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: MUTED }}>
                 Ingresa con tu usuario y contraseña para continuar con tus trámites de graduación.
