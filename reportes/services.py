@@ -20,6 +20,7 @@ from documentos.models import DocumentoPostulacion
 from modalidades.models import Modalidad
 from postulantes.models import Postulacion, Postulante
 from postulantes.services import condicion_postulacion_finalizada
+from postulantes.serializers import PostulacionListSerializer
 
 
 def porcentaje_avance_postulacion(postulacion_id: int) -> float:
@@ -289,16 +290,19 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
 
     headers = ['ID', 'Postulante', 'Carrera', 'Modalidad', 'Tutor', 'Período', 'Etapa Actual', 'Fecha']
     data = [headers]
-    for postulacion in queryset:
-        postulante_nombre = postulacion.postulante.get_full_name() if postulacion.postulante else ''
-        carrera = getattr(postulacion.postulante, 'carrera', '') or ''
-        modalidad = postulacion.modalidad.nombre if postulacion.modalidad else ''
-        tutor = postulacion.tutor or ''
-        periodo = postulacion.periodo_academico_display or ''
-        etapa_actual = postulacion.etapa_actual.nombre if getattr(postulacion, 'etapa_actual', None) else ''
-        fecha = postulacion.fecha_postulacion.strftime('%Y-%m-%d %H:%M:%S') if postulacion.fecha_postulacion else ''
+    serializer = PostulacionListSerializer(queryset, many=True)
+    serialized_data = serializer.data
+
+    for item in serialized_data:
+        postulante_nombre = item.get('postulante_nombre', '') or ''
+        carrera = item.get('postulante_carrera', '') or ''
+        modalidad = item.get('modalidad_nombre', '') or ''
+        tutor = item.get('tutor', '') or ''
+        periodo = item.get('periodo_academico_display', '') or ''
+        etapa_actual = item.get('etapa_nombre') or 'Modalidad Finalizada'
+        fecha = item.get('fecha_postulacion', '') or ''
         data.append([
-            str(postulacion.id),
+            str(item.get('id', '')),
             postulante_nombre,
             carrera,
             modalidad,
@@ -361,17 +365,20 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    for postulacion in queryset:
-        postulante_nombre = postulacion.postulante.get_full_name() if postulacion.postulante else ''
-        carrera = getattr(postulacion.postulante, 'carrera', '') or ''
-        modalidad = postulacion.modalidad.nombre if postulacion.modalidad else ''
-        tutor = postulacion.tutor or ''
-        periodo = postulacion.periodo_academico_display or ''
-        etapa_actual = postulacion.etapa_actual.nombre if getattr(postulacion, 'etapa_actual', None) else ''
-        fecha = postulacion.fecha_postulacion.strftime('%Y-%m-%d %H:%M:%S') if postulacion.fecha_postulacion else ''
+    serializer = PostulacionListSerializer(queryset, many=True)
+    serialized_data = serializer.data
+
+    for item in serialized_data:
+        postulante_nombre = item.get('postulante_nombre', '') or ''
+        carrera = item.get('postulante_carrera', '') or ''
+        modalidad = item.get('modalidad_nombre', '') or ''
+        tutor = item.get('tutor', '') or ''
+        periodo = item.get('periodo_academico_display', '') or ''
+        etapa_actual = item.get('etapa_nombre') or 'Modalidad Finalizada'
+        fecha = item.get('fecha_postulacion', '') or ''
 
         ws.append([
-            postulacion.id,
+            item.get('id', ''),
             postulante_nombre,
             carrera,
             modalidad,
