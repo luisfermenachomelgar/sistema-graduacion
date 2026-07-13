@@ -257,10 +257,10 @@ const Reportes = () => {
                   Tutor
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  Modalidades Finalizadas
+                  Modalidades en Proceso
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
-                  Modalidades Rechazadas
+                  Modalidades Finalizadas
                 </th>
                 <th className="text-center py-3 px-4 font-semibold text-gray-600 dark:text-gray-400">
                   Total Asignadas
@@ -276,11 +276,11 @@ const Reportes = () => {
                   <td className="py-3 px-4 text-gray-900 dark:text-gray-200">
                     {tutor.tutor_nombre || 'Sin datos'}
                   </td>
+                  <td className={`py-3 px-4 text-center font-medium text-red-600 dark:text-red-400`}>
+                    {tutor.en_proceso || 0}
+                  </td>
                   <td className={`py-3 px-4 text-center font-medium text-green-600 dark:text-green-400`}>
                     {tutor.modalidades_finalizadas || 0}
-                  </td>
-                  <td className={`py-3 px-4 text-center font-medium text-red-600 dark:text-red-400`}>
-                    {tutor.rechazados || 0}
                   </td>
                   <td className="py-3 px-4 text-center font-semibold text-gray-900 dark:text-white">
                     {tutor.total_asignadas || 0}

@@ -1079,7 +1079,8 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
                     'id',
                     filter=condicion_postulacion_finalizada(),
                 ),
-                rechazados=Count('id', filter=Q(estado='rechazada')),
+                # Contar postulaciones "En Proceso": estado_general != 'FINALIZADA'
+                en_proceso=Count('id', filter=~condicion_postulacion_finalizada()),
                 total_asignadas=Count('id'),
             )
             .order_by('-modalidades_finalizadas', '-total_asignadas')
@@ -1090,14 +1091,14 @@ def estadisticas_tutores(year=None, carrera_id=None) -> list[dict]:
             try:
                 tutor_nombre = (item.get('tutor') or '').strip()
                 modalidades_finalizadas = int(item.get('modalidades_finalizadas') or 0)
-                rechazados = int(item.get('rechazados') or 0)
+                en_proceso = int(item.get('en_proceso') or 0)
                 total_asignadas = int(item.get('total_asignadas') or 0)
 
                 results.append({
                     'tutor_id': _tutor_hash(tutor_nombre),
                     'tutor_nombre': tutor_nombre,
                     'modalidades_finalizadas': modalidades_finalizadas,
-                    'rechazados': rechazados,
+                    'en_proceso': en_proceso,
                     'total_asignadas': total_asignadas,
                 })
             except Exception as e:
