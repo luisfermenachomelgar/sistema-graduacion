@@ -226,13 +226,25 @@ const Reportes = () => {
 
   const renderPostulacionesEstadoGeneral = () => null;
 
+  const normalizeModalidadName = (name = '') =>
+    String(name || '')
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, ' ');
+
   const renderPostulacionesTable = () => {
+    const selectedModalidadNombre = modalidadesOptions.find((item) => String(item.id) === String(filterModalidad))?.nombre || '';
+    const isExcelencia = normalizeModalidadName(selectedModalidadNombre) === 'EXCELENCIA ACADÉMICA';
     const columns = [
       { key: 'id', label: 'ID' },
       { key: 'postulante_nombre', label: 'Postulante' },
       { key: 'postulante_carrera', label: 'Carrera' },
       { key: 'modalidad_nombre', label: 'Modalidad' },
-      { key: 'tutor', label: 'Tutor' },
+    ];
+    if (!isExcelencia) {
+      columns.push({ key: 'tutor', label: 'Tutor' });
+    }
+    columns.push(
       {
         key: 'periodo_academico_display',
         label: 'Período',
@@ -247,8 +259,8 @@ const Reportes = () => {
           </span>
         ),
       },
-      { key: 'fecha_postulacion', label: 'Fecha' },
-    ];
+      { key: 'fecha_postulacion', label: 'Fecha' }
+    );
 
     return (
       <div className="space-y-4">

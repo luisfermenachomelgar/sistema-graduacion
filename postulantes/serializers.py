@@ -145,7 +145,7 @@ class PostulacionDetailSerializer(serializers.ModelSerializer):
         requires = ('PROYECTO DE GRADO', 'TESIS', 'TRABAJO DIRIGIDO')
         optional = ('EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA')
 
-        modalidad_upper = modalidad_nombre.strip().upper() if modalidad_nombre else None
+        modalidad_upper = ' '.join(modalidad_nombre.strip().upper().split()) if modalidad_nombre else None
 
         # El modelo no permite titulo_trabajo = None, así que normalizamos a cadena vacía
         if attrs.get('titulo_trabajo') is None:

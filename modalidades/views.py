@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from config.permissions import CRUDModelPermission
-from documentos.models import ModalidadTipoDocumento
+from documentos.models import DocumentoPostulacion, ModalidadTipoDocumento
 from documentos.serializers import ModalidadTipoDocumentoSerializer
 from postulantes.models import Postulacion
 from .models import Etapa, Modalidad, ModalidadRequisito
@@ -114,6 +114,7 @@ class ModalidadViewSet(viewsets.ModelViewSet):
         postulacion_id = request.query_params.get('postulacion')
         etapa_id = request.query_params.get('etapa')
 
+        documentos_por_tipo = {}
         if postulacion_id:
             try:
                 postulacion = Postulacion.objects.select_related('etapa_actual').get(pk=int(postulacion_id))
@@ -127,11 +128,20 @@ class ModalidadViewSet(viewsets.ModelViewSet):
                     queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
                 else:
                     queryset = queryset.filter(etapa__isnull=True)
+
+            if postulacion is not None:
+                documentos = DocumentoPostulacion.objects.filter(postulacion=postulacion).select_related('tipo_documento')
+                documentos_por_tipo = {doc.tipo_documento_id: doc for doc in documentos}
         else:
             if etapa_id:
                 queryset = queryset.filter(Q(etapa__isnull=True) | Q(etapa_id=etapa_id))
             else:
                 queryset = queryset.filter(etapa__isnull=True)
+
+        queryset = list(queryset)
+        if documentos_por_tipo:
+            for item in queryset:
+                item._related_documento_postulacion = documentos_por_tipo.get(item.tipo_documento_id)
 
         serializer = ModalidadTipoDocumentoSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)

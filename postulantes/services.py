@@ -179,6 +179,9 @@ def finalizar_postulacion_por_avance(
             estado_nuevo={'estado_general': postulacion.estado_general},
             detalles={'motivo': 'finalizacion_modalidad'},
         )
+    # Refrescar la instancia desde la base de datos para evitar estados
+    # en memoria que puedan dar lugar a reasignaciones posteriores.
+    postulacion.refresh_from_db()
     return postulacion
 
 
@@ -255,9 +258,15 @@ def avanzar_postulacion(postulacion_id: int, *, actor=None) -> Postulacion:
             )
         return postulacion
 
-    return finalizar_postulacion_por_avance(
+    result = finalizar_postulacion_por_avance(
         postulacion,
         etapa_anterior=etapa_anterior,
         estado_general_anterior=estado_general_anterior,
         actor=actor,
     )
+    # Asegurar que devolvemos la instancia actualizada desde BD
+    try:
+        result.refresh_from_db()
+    except Exception:
+        pass
+    return result

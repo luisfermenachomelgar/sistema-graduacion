@@ -264,6 +264,12 @@ const Documentos = () => {
       obligatorio: item.obligatorio,
       etapa_nombre: item.etapa_nombre,
       orden: item.orden ?? 0,
+      documento_id: item.documento_id ?? null,
+      documento_estado: item.documento_estado ?? null,
+      documento_estado_display: item.documento_estado_display ?? item.documento_estado ?? null,
+      documento_archivo_url: item.documento_archivo_url ?? null,
+      documento_preview_pdf_url: item.documento_preview_pdf_url ?? null,
+      documento_archivo_nombre: item.documento_archivo_nombre ?? null,
     }));
     setTiposDocumentoFiltrados(filtered);
     return filtered;
@@ -647,6 +653,40 @@ const Documentos = () => {
     return colors[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400';
   };
 
+  const renderDocumentoStatus = (tipoDoc) => {
+    if (!tipoDoc.documento_id) {
+      return (
+        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+          Seleccionar
+        </span>
+      );
+    }
+
+    const estado = tipoDoc.documento_estado;
+    const previewUrl = tipoDoc.documento_preview_pdf_url || tipoDoc.documento_archivo_url;
+    return (
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getEstadoBadge(estado)}`}>
+          {tipoDoc.documento_estado_display || estado || 'Pendiente'}
+        </span>
+        {previewUrl && (
+          <button
+            type="button"
+            onClick={() => {
+              setPreviewUrl(new URL(previewUrl, API_CONFIG.PUBLIC_SERVER_URL).toString());
+              setPreviewDocumento({ tipo_documento_nombre: tipoDoc.label || tipoDoc.nombre });
+              setPreviewExtension(previewUrl.split('.').pop().toLowerCase());
+              setIsPreviewOpen(true);
+            }}
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          >
+            Ver archivo
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const getPostulacionLabel = (postulacion) => {
     const postulanteNombre = postulacion.postulante
       ? `${postulacion.postulante.nombre || ''} ${postulacion.postulante.apellido || ''}`.trim()
@@ -754,6 +794,7 @@ const Documentos = () => {
             data={documentos || []}
             columns={columns}
             pageSize={10}
+            showSearch={!isStudent}
             onView={!isStudent ? handleView : undefined}
             onEdit={!isStudent ? (row) => {
               setArchivoFile(null);
@@ -888,54 +929,89 @@ const Documentos = () => {
                         </span>
                       </div>
                       <div className="space-y-3">
-                        {requisitosVisibles.map((tipoDoc) => (
-                          <div
-                            key={tipoDoc.id}
-                            className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {tipoDoc.label || tipoDoc.nombre}
-                              </p>
-                              {selectedDocuments[tipoDoc.id]?.fileName && (
-                                <p className="text-xs text-green-600 dark:text-green-400">
-                                  ✓ {selectedDocuments[tipoDoc.id].fileName}
+                        {requisitosVisibles.map((tipoDoc) => {
+                          const hasDocumento = Boolean(tipoDoc.documento_id);
+                          const isRejected = tipoDoc.documento_estado === 'rechazado';
+                          const canUpload = !hasDocumento || isRejected;
+                          const documentoUrl = tipoDoc.documento_preview_pdf_url || tipoDoc.documento_archivo_url;
+
+                          return (
+                            <div
+                              key={tipoDoc.id}
+                              className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {tipoDoc.label || tipoDoc.nombre}
                                 </p>
-                              )}
-                            </div>
+                                {selectedDocuments[tipoDoc.id]?.fileName ? (
+                                  <p className="text-xs text-green-600 dark:text-green-400">
+                                    ✓ {selectedDocuments[tipoDoc.id].fileName}
+                                  </p>
+                                ) : hasDocumento && tipoDoc.documento_archivo_nombre ? (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                                    Archivo actual: {tipoDoc.documento_archivo_nombre}
+                                  </p>
+                                ) : null}
+                              </div>
 
-                            <div className="flex gap-2">
-                              <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                                <Upload className="h-4 w-4" />
-                                <span>Seleccionar</span>
-                                <input
-                                  type="file"
-                                  name={`archivo_${tipoDoc.id}`}
-                                  onChange={handleInputChange}
-                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                                  className="hidden"
-                                />
-                              </label>
+                              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                                {hasDocumento ? (
+                                  <>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getEstadoBadge(tipoDoc.documento_estado)}`}>
+                                      {tipoDoc.documento_estado_display || tipoDoc.documento_estado || 'Pendiente'}
+                                    </span>
+                                    {documentoUrl && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setPreviewUrl(new URL(documentoUrl, API_CONFIG.PUBLIC_SERVER_URL).toString());
+                                          setPreviewDocumento({ tipo_documento_nombre: tipoDoc.label || tipoDoc.nombre });
+                                          setPreviewExtension(documentoUrl.split('.').pop().toLowerCase());
+                                          setIsPreviewOpen(true);
+                                        }}
+                                        className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                      >
+                                        Ver archivo
+                                      </button>
+                                    )}
+                                  </>
+                                ) : null}
 
-                              {selectedDocuments[tipoDoc.id] && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedDocuments((prev) => {
-                                      const updated = { ...prev };
-                                      delete updated[tipoDoc.id];
-                                      return updated;
-                                    });
-                                  }}
-                                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span>Quitar</span>
-                                </button>
-                              )}
+                                {canUpload && (
+                                  <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                                    <Upload className="h-4 w-4" />
+                                    <span>{hasDocumento ? 'Reemplazar' : 'Seleccionar'}</span>
+                                    <input
+                                      type="file"
+                                      name={`archivo_${tipoDoc.id}`}
+                                      onChange={handleInputChange}
+                                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                    />
+                                  </label>
+                                )}
+
+                                {selectedDocuments[tipoDoc.id] && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDocuments((prev) => {
+                                        const updated = { ...prev };
+                                        delete updated[tipoDoc.id];
+                                        return updated;
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>Quitar</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -951,54 +1027,89 @@ const Documentos = () => {
                         </span>
                       </div>
                       <div className="space-y-3">
-                        {actasVisibles.map((tipoDoc) => (
-                          <div
-                            key={tipoDoc.id}
-                            className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {tipoDoc.label || tipoDoc.nombre}
-                              </p>
-                              {selectedDocuments[tipoDoc.id]?.fileName && (
-                                <p className="text-xs text-green-600 dark:text-green-400">
-                                  ✓ {selectedDocuments[tipoDoc.id].fileName}
+                        {actasVisibles.map((tipoDoc) => {
+                          const hasDocumento = Boolean(tipoDoc.documento_id);
+                          const isRejected = tipoDoc.documento_estado === 'rechazado';
+                          const canUpload = !hasDocumento || isRejected;
+                          const documentoUrl = tipoDoc.documento_preview_pdf_url || tipoDoc.documento_archivo_url;
+
+                          return (
+                            <div
+                              key={tipoDoc.id}
+                              className="flex items-center gap-4 rounded-lg border border-gray-300 bg-gray-50 p-4 transition dark:border-gray-600 dark:bg-gray-800"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {tipoDoc.label || tipoDoc.nombre}
                                 </p>
-                              )}
-                            </div>
+                                {selectedDocuments[tipoDoc.id]?.fileName ? (
+                                  <p className="text-xs text-green-600 dark:text-green-400">
+                                    ✓ {selectedDocuments[tipoDoc.id].fileName}
+                                  </p>
+                                ) : hasDocumento && tipoDoc.documento_archivo_nombre ? (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                                    Archivo actual: {tipoDoc.documento_archivo_nombre}
+                                  </p>
+                                ) : null}
+                              </div>
 
-                            <div className="flex gap-2">
-                              <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                                <Upload className="h-4 w-4" />
-                                <span>Seleccionar</span>
-                                <input
-                                  type="file"
-                                  name={`archivo_${tipoDoc.id}`}
-                                  onChange={handleInputChange}
-                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                                  className="hidden"
-                                />
-                              </label>
+                              <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                                {hasDocumento ? (
+                                  <>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getEstadoBadge(tipoDoc.documento_estado)}`}>
+                                      {tipoDoc.documento_estado_display || tipoDoc.documento_estado || 'Pendiente'}
+                                    </span>
+                                    {documentoUrl && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setPreviewUrl(new URL(documentoUrl, API_CONFIG.PUBLIC_SERVER_URL).toString());
+                                          setPreviewDocumento({ tipo_documento_nombre: tipoDoc.label || tipoDoc.nombre });
+                                          setPreviewExtension(documentoUrl.split('.').pop().toLowerCase());
+                                          setIsPreviewOpen(true);
+                                        }}
+                                        className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                      >
+                                        Ver archivo
+                                      </button>
+                                    )}
+                                  </>
+                                ) : null}
 
-                              {selectedDocuments[tipoDoc.id] && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedDocuments((prev) => {
-                                      const updated = { ...prev };
-                                      delete updated[tipoDoc.id];
-                                      return updated;
-                                    });
-                                  }}
-                                  className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span>Quitar</span>
-                                </button>
-                              )}
+                                {canUpload && (
+                                  <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                                    <Upload className="h-4 w-4" />
+                                    <span>{hasDocumento ? 'Reemplazar' : 'Seleccionar'}</span>
+                                    <input
+                                      type="file"
+                                      name={`archivo_${tipoDoc.id}`}
+                                      onChange={handleInputChange}
+                                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                    />
+                                  </label>
+                                )}
+
+                                {selectedDocuments[tipoDoc.id] && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDocuments((prev) => {
+                                        const updated = { ...prev };
+                                        delete updated[tipoDoc.id];
+                                        return updated;
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>Quitar</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

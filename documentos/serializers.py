@@ -23,6 +23,12 @@ class ModalidadTipoDocumentoSerializer(serializers.ModelSerializer):
     tipo_documento = TipoDocumentoSerializer(read_only=True)
     etapa_nombre = serializers.CharField(source='etapa.nombre', read_only=True)
     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
+    documento_id = serializers.SerializerMethodField()
+    documento_estado = serializers.SerializerMethodField()
+    documento_estado_display = serializers.SerializerMethodField()
+    documento_archivo_url = serializers.SerializerMethodField()
+    documento_preview_pdf_url = serializers.SerializerMethodField()
+    documento_archivo_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = ModalidadTipoDocumento
@@ -37,8 +43,54 @@ class ModalidadTipoDocumentoSerializer(serializers.ModelSerializer):
             'orden',
             'activo',
             'descripcion_requerimiento',
+            'documento_id',
+            'documento_estado',
+            'documento_estado_display',
+            'documento_archivo_url',
+            'documento_preview_pdf_url',
+            'documento_archivo_nombre',
         ]
         read_only_fields = ['id', 'modalidad', 'modalidad_nombre', 'tipo_documento', 'etapa_nombre']
+
+    def _get_documento(self, obj):
+        return getattr(obj, '_related_documento_postulacion', None)
+
+    def get_documento_id(self, obj):
+        documento = self._get_documento(obj)
+        return documento.id if documento else None
+
+    def get_documento_estado(self, obj):
+        documento = self._get_documento(obj)
+        return documento.estado if documento else None
+
+    def get_documento_estado_display(self, obj):
+        documento = self._get_documento(obj)
+        if not documento:
+            return None
+        return getattr(documento, 'get_estado_display', lambda: None)() if hasattr(documento, 'get_estado_display') else None
+
+    def get_documento_archivo_url(self, obj):
+        documento = self._get_documento(obj)
+        if not documento:
+            return None
+        return getattr(documento, 'archivo', None).url if getattr(documento, 'archivo', None) else None
+
+    def get_documento_preview_pdf_url(self, obj):
+        documento = self._get_documento(obj)
+        if not documento:
+            return None
+        if getattr(documento, 'preview_pdf', None):
+            try:
+                return documento.preview_pdf.url
+            except Exception:
+                return None
+        return None
+
+    def get_documento_archivo_nombre(self, obj):
+        documento = self._get_documento(obj)
+        if not documento or not getattr(documento, 'archivo', None):
+            return None
+        return documento.archivo.name.split('/')[-1]
 
 
 class DocumentoPostulacionListSerializer(serializers.ModelSerializer):

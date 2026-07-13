@@ -51,6 +51,12 @@ const ACADEMIC_YEAR_OPTIONS = Array.from({ length: currentYear - 1990 + 1 }, (_,
 
 const HIDDEN_TITLE_TUTOR_MODALIDADES = ['EXAMEN DE GRADO', 'EXCELENCIA ACADÉMICA'];
 
+const normalizeModalidadName = (name = '') =>
+  String(name || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+
 const Postulaciones = () => {
   const {
     data: postulaciones,
@@ -102,7 +108,9 @@ const Postulaciones = () => {
   const selectedModalidadNombre = formData.modalidad
     ? (modalidades.find((m) => String(m.id) === String(formData.modalidad))?.nombre || '')
     : '';
-  const shouldShowTrabajoFields = !HIDDEN_TITLE_TUTOR_MODALIDADES.includes(selectedModalidadNombre.trim().toUpperCase());
+  const shouldShowTrabajoFields = !HIDDEN_TITLE_TUTOR_MODALIDADES.includes(
+    normalizeModalidadName(selectedModalidadNombre)
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -162,7 +170,7 @@ const Postulaciones = () => {
 
     if (name === 'modalidad') {
       const selectedModalidad = modalidades.find((m) => String(m.id) === String(nextValue));
-      const normalizedModalidad = (selectedModalidad?.nombre || '').trim().toUpperCase();
+      const normalizedModalidad = normalizeModalidadName(selectedModalidad?.nombre);
 
       if (HIDDEN_TITLE_TUTOR_MODALIDADES.includes(normalizedModalidad)) {
         nextFormData.titulo_trabajo = '';
