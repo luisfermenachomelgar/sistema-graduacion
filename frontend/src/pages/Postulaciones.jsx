@@ -441,22 +441,6 @@ const Postulaciones = () => {
           <p className="text-gray-600 dark:text-gray-400">Administra las postulaciones del sistema</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={exportingPdf}
-            className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            {exportingPdf ? 'Exportando PDF...' : 'Exportar PDF'}
-          </button>
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            {exportingExcel ? 'Exportando Excel...' : 'Exportar Excel'}
-          </button>
           {!isStudent && (
             <button
               onClick={() => openModal()}
