@@ -18,6 +18,8 @@ from .services import (
     detalle_alumnos_titulados_por_tutor,
     estadisticas_tutores,
     generar_excel_tutores,
+    generar_pdf_postulaciones,
+    generar_excel_postulaciones,
     reporte_eficiencia_carreras,
     get_dashboard_chart_data,
     build_postulaciones_report_queryset,
@@ -163,6 +165,44 @@ class ReporteGeneralPostulacionesView(APIView):
                 {'detail': 'Internal server error', 'error': str(e)},
                 status=500
             )
+
+
+class ExportarPostulacionesPDFView(APIView):
+    permission_classes = [PuedeVerDashboardInstitucionalPermission]
+
+    def get(self, request):
+        filters = {
+            'search': request.query_params.get('search'),
+            'modalidad': request.query_params.get('modalidad'),
+            'gestion': request.query_params.get('gestion'),
+            'anio_academico': request.query_params.get('anio_academico'),
+            'semestre_academico': request.query_params.get('semestre_academico'),
+            'estado': request.query_params.get('estado'),
+            'estado_general': request.query_params.get('estado_general'),
+            'carrera': request.query_params.get('carrera'),
+            'tutor': request.query_params.get('tutor'),
+        }
+        queryset = build_postulaciones_report_queryset(filters).order_by('-fecha_postulacion')
+        return generar_pdf_postulaciones(queryset, request.user, filters)
+
+
+class ExportarPostulacionesExcelView(APIView):
+    permission_classes = [PuedeVerDashboardInstitucionalPermission]
+
+    def get(self, request):
+        filters = {
+            'search': request.query_params.get('search'),
+            'modalidad': request.query_params.get('modalidad'),
+            'gestion': request.query_params.get('gestion'),
+            'anio_academico': request.query_params.get('anio_academico'),
+            'semestre_academico': request.query_params.get('semestre_academico'),
+            'estado': request.query_params.get('estado'),
+            'estado_general': request.query_params.get('estado_general'),
+            'carrera': request.query_params.get('carrera'),
+            'tutor': request.query_params.get('tutor'),
+        }
+        queryset = build_postulaciones_report_queryset(filters).order_by('-fecha_postulacion')
+        return generar_excel_postulaciones(queryset, request.user, filters)
 
 
 class EstadisticasTutoresView(APIView):

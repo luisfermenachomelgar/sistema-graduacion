@@ -8,6 +8,7 @@ import useAuth from '../hooks/useAuth';
 import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import api from '../api/api';
+import axiosInstance from '../api/axios';
 import { API_CONFIG } from '../constants/api';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
@@ -87,14 +88,19 @@ const Postulaciones = () => {
   const [etapas, setEtapas] = useState([]);
   const [success, setSuccess] = useState('');
   const [formError, setFormError] = useState('');
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   
+  const [filterModalidad, setFilterModalidad] = useState(searchParams.get('modalidad') || '');
   const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
-  const [filterAnioAcademico, setFilterAnioAcademico] = useState(searchParams.get('anio_academico') || '');
+  const [filterGestion, setFilterGestion] = useState(searchParams.get('gestion') || searchParams.get('anio_academico') || '');
   const [filterSemestreAcademico, setFilterSemestreAcademico] = useState(searchParams.get('semestre_academico') || '');
 
   const { search, setSearch, page, setPage } = useListFilters(list, {
+    modalidad: filterModalidad,
     estado: filterEstado,
-    anio_academico: filterAnioAcademico,
+    gestion: filterGestion,
+    anio_academico: filterGestion,
     semestre_academico: filterSemestreAcademico,
   }, {
     requestConfig: { skipGlobalLoader: true },
@@ -283,6 +289,70 @@ const Postulaciones = () => {
     }
   };
 
+  const getExportQueryParams = () => {
+    const params = {};
+    if (search) params.search = search;
+    if (filterModalidad) params.modalidad = filterModalidad;
+    if (filterEstado) params.estado = filterEstado;
+    if (filterGestion) {
+      params.gestion = filterGestion;
+      params.anio_academico = filterGestion;
+    }
+    if (filterSemestreAcademico) params.semestre_academico = filterSemestreAcademico;
+    return params;
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setError('');
+
+    try {
+      const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.EXPORTAR_POSTULACIONES_PDF, {
+        params: getExportQueryParams(),
+        responseType: 'blob',
+        skipGlobalLoader: true,
+      });
+
+      downloadBlob(response.data, `postulaciones_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('Export PDF failed:', err);
+      setError('Error al exportar PDF de postulaciones');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    setError('');
+
+    try {
+      const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.EXPORTAR_POSTULACIONES_EXCEL, {
+        params: getExportQueryParams(),
+        responseType: 'blob',
+        skipGlobalLoader: true,
+      });
+
+      downloadBlob(response.data, `postulaciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      console.error('Export Excel failed:', err);
+      setError('Error al exportar Excel de postulaciones');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const getEstadoBadge = (estado) => {
     const colors = {
       borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -370,15 +440,33 @@ const Postulaciones = () => {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Postulaciones</h1>
           <p className="text-gray-600 dark:text-gray-400">Administra las postulaciones del sistema</p>
         </div>
-        {!isStudent && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+            className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
           >
-            <Plus className="w-5 h-5" />
-            Nueva Postulación
+            {exportingPdf ? 'Exportando PDF...' : 'Exportar PDF'}
           </button>
-        )}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            {exportingExcel ? 'Exportando Excel...' : 'Exportar Excel'}
+          </button>
+          {!isStudent && (
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium shadow"
+            >
+              <Plus className="w-5 h-5" />
+              Nueva Postulación
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Alerts */}
@@ -398,6 +486,23 @@ const Postulaciones = () => {
             }}
             className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
           />
+          <div className="w-full sm:w-auto">
+            <select
+              value={filterModalidad}
+              onChange={(e) => {
+                setFilterModalidad(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"
+            >
+              <option value="">Todas las modalidades</option>
+              {modalidades.map((modalidad) => (
+                <option key={modalidad.id} value={modalidad.id}>
+                  {modalidad.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="w-full sm:w-auto">
             <select
               value={filterEstado}
@@ -420,10 +525,10 @@ const Postulaciones = () => {
               type="number"
               min="2000"
               max="2100"
-              placeholder="Año académico"
-              value={filterAnioAcademico}
+              placeholder="Gestión"
+              value={filterGestion}
               onChange={(e) => {
-                setFilterAnioAcademico(e.target.value);
+                setFilterGestion(e.target.value);
                 setPage(1);
               }}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition"

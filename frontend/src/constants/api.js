@@ -55,6 +55,8 @@ export const API_CONFIG = {
     
     // Reportes (Reports)
     REPORTE_POSTULACIONES: '/api/reportes/postulaciones/',
+    EXPORTAR_POSTULACIONES_PDF: '/api/reportes/postulaciones/exportar/pdf/',
+    EXPORTAR_POSTULACIONES_EXCEL: '/api/reportes/postulaciones/exportar/excel/',
     DASHBOARD_GENERAL: '/api/reportes/dashboard-general/',
     DOCUMENTOS: '/api/documentos/',
     DOCUMENTO_DETAIL: (id) => `/api/documentos/${id}/`,

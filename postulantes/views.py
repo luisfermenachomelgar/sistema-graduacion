@@ -3,6 +3,7 @@ from rest_framework import filters, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
+from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
@@ -23,7 +24,12 @@ from .models import ComentarioInterno, Notificacion, Postulacion, Postulante
 from .serializers import ComentarioInternoSerializer, EtapaSerializer, NotificacionSerializer, PostulacionSerializer, PostulanteSerializer
 from .services import avanzar_postulacion, finalizar_postulacion_si_corresponde
 from .tasks import limpiar_notificaciones_antiguas
-from reportes.services import dashboard_general, generar_pdf_dashboard
+from reportes.services import (
+    dashboard_general,
+    generar_pdf_dashboard,
+    generar_pdf_postulaciones,
+    generar_excel_postulaciones,
+)
 
 
 # FASE 3: Custom Pagination with max_page_size limit
@@ -79,7 +85,7 @@ class PostulacionViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter
     ]
-    filterset_fields = ['modalidad', 'anio_academico', 'semestre_academico', 'estado']
+    filterset_fields = ['modalidad', 'gestion', 'anio_academico', 'semestre_academico', 'estado']
 
     search_fields = [
         'titulo_trabajo',
@@ -106,6 +112,16 @@ class PostulacionViewSet(viewsets.ModelViewSet):
         if can_view_all_postulaciones(self.request.user):
             return queryset
         return queryset.filter(postulante__usuario=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='exportar-pdf')
+    def exportar_pdf(self, request):
+        queryset = self.filter_queryset(self.get_queryset()).order_by('-fecha_postulacion')
+        return generar_pdf_postulaciones(queryset, request.user)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request):
+        queryset = self.filter_queryset(self.get_queryset()).order_by('-fecha_postulacion')
+        return generar_excel_postulaciones(queryset, request.user)
 
     def perform_create(self, serializer):
         """

@@ -1,14 +1,17 @@
 from django.db.models import Avg, Case, Count, DurationField, ExpressionWrapper, F, FloatField, Max, Q, Value, When, OuterRef, Subquery
 from django.db.models.functions import Coalesce, Now, TruncMonth
+from django.utils import timezone
 from io import BytesIO
 import os
 import zlib
 from django.conf import settings
 from django.http import HttpResponse
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import inch
+mm = inch / 25.4
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
@@ -69,7 +72,7 @@ def documentos_rechazados_por_postulacion(postulacion_id: int) -> dict:
 def build_postulaciones_report_queryset(filters: dict | None = None):
     """Construye el queryset base para el reporte general de postulaciones."""
     filters = filters or {}
-    queryset = Postulacion.objects.select_related('postulante', 'modalidad').all()
+    queryset = Postulacion.objects.select_related('postulante', 'modalidad', 'etapa_actual').all()
 
     if filters.get('modalidad'):
         queryset = queryset.filter(modalidad_id=filters['modalidad'])
@@ -203,6 +206,192 @@ def get_postulaciones_report_filters():
         'carreras': [{'value': carrera, 'label': carrera} for carrera in carreras],
         'tutores': [{'value': tutor, 'label': tutor} for tutor in tutores],
     }
+
+
+def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
+    buffer = BytesIO()
+    page_size = landscape(A4)
+    margin = 15 * mm
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=page_size,
+        leftMargin=margin,
+        rightMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='ReportHeader', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor('#1A6FAB')))
+    styles.add(ParagraphStyle(name='ReportTitle', parent=styles['Heading2'], fontSize=14, leading=18, alignment=1, textColor=colors.black))
+    styles.add(ParagraphStyle(name='ReportNormal', parent=styles['Normal'], fontSize=9, leading=12))
+    styles.add(ParagraphStyle(name='ReportSmall', parent=styles['Normal'], fontSize=8, leading=10))
+    styles.add(ParagraphStyle(name='InstitutionHeader', parent=styles['Normal'], fontSize=10, leading=13, alignment=1, textColor=colors.black, spaceAfter=0))
+    styles.add(ParagraphStyle(name='ReportMeta', parent=styles['Normal'], fontSize=8, leading=10, textColor=colors.black, spaceAfter=2))
+
+    logo_path = os.path.join(str(settings.BASE_DIR), 'Logo-ac.png')
+    logo = None
+    if os.path.exists(logo_path):
+        logo = Image(logo_path, width=0.95 * inch, height=0.95 * inch)
+
+    institution_lines = [
+        Paragraph('UNIVERSIDAD AUTÓNOMA DEL BENI', styles['InstitutionHeader']),
+        Paragraph('"JOSÉ BALLIVIÁN"', styles['InstitutionHeader']),
+        Paragraph('CARRERA DE INGENIERÍA DE SISTEMAS', styles['InstitutionHeader']),
+    ]
+
+    header_cells = [[logo or '', institution_lines]]
+    header_table = Table(
+        header_cells,
+        colWidths=[1.1 * inch, page_size[0] - (margin * 2) - 1.1 * inch],
+        hAlign='LEFT',
+    )
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+
+    story = [header_table, Spacer(1, 0.08 * inch)]
+    separator = Table(
+        [['']],
+        colWidths=[page_size[0] - (margin * 2)],
+        style=[('LINEBELOW', (0, 0), (-1, -1), 1, colors.black)],
+    )
+    story.append(separator)
+    story.append(Spacer(1, 0.18 * inch))
+    story.append(Paragraph('REPORTE DE POSTULACIONES', styles['ReportTitle']))
+
+    now = timezone.localtime()
+    story.append(Spacer(1, 0.05 * inch))
+    story.append(Paragraph(f'Fecha generación: {now.strftime("%Y-%m-%d")}', styles['ReportMeta']))
+    story.append(Paragraph(f'Hora generación: {now.strftime("%H:%M:%S")}', styles['ReportMeta']))
+    story.append(Paragraph(f'Usuario: {getattr(user, "get_full_name", lambda: None)() or getattr(user, "username", "")}', styles['ReportMeta']))
+    story.append(Spacer(1, 0.18 * inch))
+
+    if filters:
+        filter_lines = []
+        if filters.get('search'):
+            filter_lines.append(f'Búsqueda: {filters["search"]}')
+        if filters.get('modalidad'):
+            filter_lines.append(f'Modalidad: {filters["modalidad"]}')
+        if filters.get('gestion'):
+            filter_lines.append(f'Gestión: {filters["gestion"]}')
+        if filters.get('semestre_academico'):
+            filter_lines.append(f'Semestre: {filters["semestre_academico"]}')
+        if filter_lines:
+            story.append(Paragraph('Filtros aplicados:', styles['ReportNormal']))
+            for line in filter_lines:
+                story.append(Paragraph(line, styles['ReportNormal']))
+            story.append(Spacer(1, 0.18 * inch))
+
+    headers = ['ID', 'Postulante', 'Carrera', 'Modalidad', 'Tutor', 'Período', 'Etapa Actual', 'Fecha']
+    data = [headers]
+    for postulacion in queryset:
+        postulante_nombre = postulacion.postulante.get_full_name() if postulacion.postulante else ''
+        carrera = getattr(postulacion.postulante, 'carrera', '') or ''
+        modalidad = postulacion.modalidad.nombre if postulacion.modalidad else ''
+        tutor = postulacion.tutor or ''
+        periodo = postulacion.periodo_academico_display or ''
+        etapa_actual = postulacion.etapa_actual.nombre if getattr(postulacion, 'etapa_actual', None) else ''
+        fecha = postulacion.fecha_postulacion.strftime('%Y-%m-%d %H:%M:%S') if postulacion.fecha_postulacion else ''
+        data.append([
+            str(postulacion.id),
+            postulante_nombre,
+            carrera,
+            modalidad,
+            tutor,
+            periodo,
+            etapa_actual,
+            fecha,
+        ])
+
+    available_width = page_size[0] - (margin * 2)
+    column_weights = [0.06, 0.22, 0.16, 0.14, 0.16, 0.08, 0.14, 0.14]
+    col_widths = [available_width * weight for weight in column_weights]
+
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A6FAB')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#D1D5DB')),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+
+    for row_index, row in enumerate(data):
+        for col_index, cell in enumerate(row):
+            if row_index == 0:
+                table._cellvalues[row_index][col_index] = Paragraph(str(cell), styles['Normal'])
+            else:
+                table._cellvalues[row_index][col_index] = Paragraph(str(cell), styles['ReportSmall'])
+
+    story.append(table)
+    story.append(Spacer(1, 0.2 * inch))
+    story.append(Paragraph(f'Total registros: {len(queryset)}', styles['ReportNormal']))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="postulaciones_report.pdf"'
+    return response
+
+
+def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Postulaciones'
+
+    headers = ['ID', 'Postulante', 'Carrera', 'Modalidad', 'Tutor', 'Período', 'Etapa Actual', 'Fecha']
+    ws.append(headers)
+
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill(start_color='1A6FAB', end_color='1A6FAB', fill_type='solid')
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    for postulacion in queryset:
+        postulante_nombre = postulacion.postulante.get_full_name() if postulacion.postulante else ''
+        carrera = getattr(postulacion.postulante, 'carrera', '') or ''
+        modalidad = postulacion.modalidad.nombre if postulacion.modalidad else ''
+        tutor = postulacion.tutor or ''
+        periodo = postulacion.periodo_academico_display or ''
+        etapa_actual = postulacion.etapa_actual.nombre if getattr(postulacion, 'etapa_actual', None) else ''
+        fecha = postulacion.fecha_postulacion.strftime('%Y-%m-%d %H:%M:%S') if postulacion.fecha_postulacion else ''
+
+        ws.append([
+            postulacion.id,
+            postulante_nombre,
+            carrera,
+            modalidad,
+            tutor,
+            periodo,
+            etapa_actual,
+            fecha,
+        ])
+
+    for i, column_cells in enumerate(ws.columns, 1):
+        max_length = max(len(str(cell.value) or '') for cell in column_cells)
+        ws.column_dimensions[get_column_letter(i)].width = min(max_length + 2, 50)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="postulaciones_report.xlsx"'
+    return response
 
 
 def dashboard_general(fecha_inicio=None, fecha_fin=None, year=None) -> dict:

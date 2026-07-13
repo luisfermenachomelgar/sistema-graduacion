@@ -21,6 +21,8 @@ const Reportes = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('tutores');
   const [exportingTutores, setExportingTutores] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [postulaciones, setPostulaciones] = useState([]);
   const [postulacionesMeta, setPostulacionesMeta] = useState({ count: 0, next: null, previous: null });
@@ -157,6 +159,76 @@ const Reportes = () => {
       setError('Error al exportar estadísticas');
     } finally {
       setExportingTutores(false);
+    }
+  };
+
+  const handleExportPostulacionesPdf = async () => {
+    setExportingPdf(true);
+    setPostulacionesError('');
+
+    try {
+      const response = await axiosInstance.get(
+        API_CONFIG.ENDPOINTS.EXPORTAR_POSTULACIONES_PDF,
+        {
+          params: {
+            search,
+            modalidad: filterModalidad,
+            gestion: filterGestion,
+            semestre_academico: filterSemestre,
+          },
+          responseType: 'blob',
+          skipGlobalLoader: true,
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `postulaciones_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export postulaciones PDF failed:', err);
+      setPostulacionesError('Error al exportar PDF de postulaciones');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleExportPostulacionesExcel = async () => {
+    setExportingExcel(true);
+    setPostulacionesError('');
+
+    try {
+      const response = await axiosInstance.get(
+        API_CONFIG.ENDPOINTS.EXPORTAR_POSTULACIONES_EXCEL,
+        {
+          params: {
+            search,
+            modalidad: filterModalidad,
+            gestion: filterGestion,
+            semestre_academico: filterSemestre,
+          },
+          responseType: 'blob',
+          skipGlobalLoader: true,
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `postulaciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export postulaciones Excel failed:', err);
+      setPostulacionesError('Error al exportar Excel de postulaciones');
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -324,9 +396,30 @@ const Reportes = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-4">
-          <div />
-          <div />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {postulaciones.length > 0 && (
+              <>Filtros aplicados: {search || 'Sin búsqueda'}{filterModalidad ? `, Modalidad ${modalidadesOptions.find((item) => String(item.id) === String(filterModalidad))?.nombre || ''}` : ''}{filterGestion ? `, Gestión ${filterGestion}` : ''}{filterSemestre ? `, Semestre ${filterSemestre}` : ''}</>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleExportPostulacionesPdf}
+              disabled={exportingPdf}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition"
+            >
+              {exportingPdf ? 'Exportando PDF...' : 'Exportar PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPostulacionesExcel}
+              disabled={exportingExcel}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition"
+            >
+              {exportingExcel ? 'Exportando Excel...' : 'Exportar Excel'}
+            </button>
+          </div>
         </div>
 
         <Table
