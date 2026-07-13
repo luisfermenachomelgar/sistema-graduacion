@@ -309,30 +309,18 @@ const Reportes = () => {
     const isExcelencia = normalizeModalidadName(selectedModalidadNombre) === 'EXCELENCIA ACADÉMICA';
     const columns = [
       { key: 'id', label: 'ID' },
+      { key: 'ru', label: 'RU', render: (value) => value || '-' },
       { key: 'postulante_nombre', label: 'Postulante' },
-      { key: 'postulante_carrera', label: 'Carrera' },
       { key: 'modalidad_nombre', label: 'Modalidad' },
-    ];
-    if (!isExcelencia) {
-      columns.push({ key: 'tutor', label: 'Tutor' });
-    }
-    columns.push(
-      {
-        key: 'periodo_academico_display',
-        label: 'Período',
-        render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-'),
-      },
-      {
-        key: 'etapa_nombre',
-        label: 'Etapa Actual',
-        render: (_, row) => (
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {getEtapaActualLabel(row) || '-'}
-          </span>
-        ),
-      },
+      { key: 'etapa_nombre', label: 'Etapa Actual', render: (_, row) => (
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {getEtapaActualLabel(row) || '-'}
+        </span>
+      ) },
+      { key: 'tutor', label: 'Tutor' },
+      { key: 'periodo_academico_display', label: 'Período', render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-') },
       { key: 'fecha_postulacion', label: 'Fecha' }
-    );
+    ];
 
     return (
       <div className="space-y-4">

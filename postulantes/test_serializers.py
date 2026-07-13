@@ -35,6 +35,17 @@ class TestPostulacionListSerializer(TestCase):
         self.assertEqual(serializer.data['etapa_actual'], self.etapa.id)
         self.assertEqual(serializer.data['etapa_nombre'], self.etapa.nombre)
 
+    def test_serializer_includes_ru_with_fallback_dash(self):
+        serializer = PostulacionListSerializer(self.postulacion)
+
+        self.assertEqual(serializer.data['ru'], 'COD-001')
+
+        self.postulante.codigo_estudiante = ''
+        self.postulante.save(update_fields=['codigo_estudiante'])
+        serializer = PostulacionListSerializer(self.postulacion)
+
+        self.assertEqual(serializer.data['ru'], '-')
+
     def test_viewset_uses_list_serializer_for_listing_action(self):
         viewset = PostulacionViewSet()
         viewset.action = 'list'

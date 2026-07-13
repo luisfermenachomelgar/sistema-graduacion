@@ -288,14 +288,14 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
                 story.append(Paragraph(line, styles['ReportNormal']))
             story.append(Spacer(1, 0.18 * inch))
 
-    headers = ['ID', 'Postulante', 'Carrera', 'Modalidad', 'Tutor', 'Período', 'Etapa Actual', 'Fecha']
+    headers = ['ID', 'RU', 'Postulante', 'Modalidad', 'Etapa Actual', 'Tutor', 'Período', 'Fecha']
     data = [headers]
     serializer = PostulacionListSerializer(queryset, many=True)
     serialized_data = serializer.data
 
     for item in serialized_data:
         postulante_nombre = item.get('postulante_nombre', '') or ''
-        carrera = item.get('postulante_carrera', '') or ''
+        ru = item.get('ru', '') or '-'
         modalidad = item.get('modalidad_nombre', '') or ''
         tutor = item.get('tutor', '') or ''
         periodo = item.get('periodo_academico_display', '') or ''
@@ -303,17 +303,17 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
         fecha = item.get('fecha_postulacion', '') or ''
         data.append([
             str(item.get('id', '')),
+            ru,
             postulante_nombre,
-            carrera,
             modalidad,
+            etapa_actual,
             tutor,
             periodo,
-            etapa_actual,
             fecha,
         ])
 
     available_width = page_size[0] - (margin * 2)
-    column_weights = [0.06, 0.22, 0.16, 0.14, 0.16, 0.08, 0.14, 0.14]
+    column_weights = [0.06, 0.07, 0.23, 0.16, 0.17, 0.09, 0.12, 0.1]
     col_widths = [available_width * weight for weight in column_weights]
 
     table = Table(data, colWidths=col_widths, repeatRows=1)
@@ -355,7 +355,7 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
     ws = wb.active
     ws.title = 'Postulaciones'
 
-    headers = ['ID', 'Postulante', 'Carrera', 'Modalidad', 'Tutor', 'Período', 'Etapa Actual', 'Fecha']
+    headers = ['ID', 'RU', 'Postulante', 'Modalidad', 'Etapa Actual', 'Tutor', 'Período', 'Fecha']
     ws.append(headers)
 
     header_font = Font(bold=True, color='FFFFFF')
@@ -370,7 +370,7 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
 
     for item in serialized_data:
         postulante_nombre = item.get('postulante_nombre', '') or ''
-        carrera = item.get('postulante_carrera', '') or ''
+        ru = item.get('ru', '') or '-'
         modalidad = item.get('modalidad_nombre', '') or ''
         tutor = item.get('tutor', '') or ''
         periodo = item.get('periodo_academico_display', '') or ''
@@ -379,12 +379,12 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
 
         ws.append([
             item.get('id', ''),
+            ru,
             postulante_nombre,
-            carrera,
             modalidad,
+            etapa_actual,
             tutor,
             periodo,
-            etapa_actual,
             fecha,
         ])
 
