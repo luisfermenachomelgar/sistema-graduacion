@@ -319,7 +319,7 @@ const Reportes = () => {
       ) },
       { key: 'tutor', label: 'Tutor', render: (value) => value || '-' },
       { key: 'periodo_academico_display', label: 'Período', render: (value, row) => value || (row.anio_academico && row.semestre_academico ? `${row.semestre_academico}/${row.anio_academico}` : '-') },
-      { key: 'fecha_postulacion', label: 'Fecha' }
+      { key: 'fecha_postulacion', label: 'Fecha', render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-' }
     ];
 
     return (

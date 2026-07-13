@@ -406,6 +406,11 @@ const Postulaciones = () => {
       },
     },
     {
+      key: 'fecha_postulacion',
+      label: 'Fecha',
+      render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-',
+    },
+    {
       key: 'acciones_avance',
       label: 'Acción',
       render: (_, row) => {

@@ -300,7 +300,14 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
         tutor = item.get('tutor', '') or ''
         periodo = item.get('periodo_academico_display', '') or ''
         etapa_actual = item.get('etapa_nombre') or 'Modalidad Finalizada'
-        fecha = item.get('fecha_postulacion', '') or ''
+        fecha_raw = item.get('fecha_postulacion', '') or ''
+        fecha = fecha_raw.split('T')[0] if isinstance(fecha_raw, str) and 'T' in fecha_raw else fecha_raw
+        if fecha and isinstance(fecha, str):
+            try:
+                from datetime import datetime
+                fecha = datetime.fromisoformat(fecha.replace('Z', '+00:00')).strftime('%d/%m/%Y')
+            except Exception:
+                fecha = fecha_raw
         data.append([
             str(item.get('id', '')),
             ru,
@@ -309,7 +316,7 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
             etapa_actual,
             tutor or '-',
             periodo,
-            fecha,
+            fecha or '-',
         ])
 
     available_width = page_size[0] - (margin * 2)
@@ -375,7 +382,14 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
         tutor = item.get('tutor', '') or ''
         periodo = item.get('periodo_academico_display', '') or ''
         etapa_actual = item.get('etapa_nombre') or 'Modalidad Finalizada'
-        fecha = item.get('fecha_postulacion', '') or ''
+        fecha_raw = item.get('fecha_postulacion', '') or ''
+        fecha = fecha_raw.split('T')[0] if isinstance(fecha_raw, str) and 'T' in fecha_raw else fecha_raw
+        if fecha and isinstance(fecha, str):
+            try:
+                from datetime import datetime
+                fecha = datetime.fromisoformat(fecha.replace('Z', '+00:00')).strftime('%d/%m/%Y')
+            except Exception:
+                fecha = fecha_raw
 
         ws.append([
             item.get('id', ''),
@@ -385,7 +399,7 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
             etapa_actual,
             tutor or '-',
             periodo,
-            fecha,
+            fecha or '-',
         ])
 
     for i, column_cells in enumerate(ws.columns, 1):
