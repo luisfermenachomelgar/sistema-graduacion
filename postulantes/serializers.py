@@ -70,6 +70,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
     """Serializer para listado de postulaciones."""
     postulante_nombre = serializers.SerializerMethodField()
     ru = serializers.SerializerMethodField()
+    tutor = serializers.CharField(read_only=True)
     postulante_carrera = serializers.CharField(source='postulante.carrera', read_only=True)
     modalidad = serializers.IntegerField(source='modalidad.id', read_only=True)
     modalidad_nombre = serializers.CharField(source='modalidad.nombre', read_only=True)
@@ -82,7 +83,7 @@ class PostulacionListSerializer(serializers.ModelSerializer):
         model = Postulacion
         fields = [
             'id', 'ru', 'postulante_nombre', 'postulante_carrera', 'modalidad', 'modalidad_nombre', 'etapa_actual', 'titulo_trabajo',
-            'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
+            'tutor', 'etapa_nombre', 'anio_academico', 'semestre_academico', 'periodo_academico_display', 'estado', 'estado_display',
             'estado_general', 'fecha_postulacion'
         ]
         read_only_fields = ['id', 'fecha_postulacion']

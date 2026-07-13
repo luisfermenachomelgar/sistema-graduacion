@@ -307,7 +307,7 @@ def generar_pdf_postulaciones(queryset, user, filters=None) -> HttpResponse:
             postulante_nombre,
             modalidad,
             etapa_actual,
-            tutor,
+            tutor or '-',
             periodo,
             fecha,
         ])
@@ -383,7 +383,7 @@ def generar_excel_postulaciones(queryset, user, filters=None) -> HttpResponse:
             postulante_nombre,
             modalidad,
             etapa_actual,
-            tutor,
+            tutor or '-',
             periodo,
             fecha,
         ])

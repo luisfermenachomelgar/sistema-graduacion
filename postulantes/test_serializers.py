@@ -24,6 +24,7 @@ class TestPostulacionListSerializer(TestCase):
             modalidad=self.modalidad,
             etapa_actual=self.etapa,
             titulo_trabajo='Tesis de prueba',
+            tutor='Dr. Gómez',
             anio_academico=2026,
             semestre_academico=1,
             gestion=2026,
@@ -35,9 +36,10 @@ class TestPostulacionListSerializer(TestCase):
         self.assertEqual(serializer.data['etapa_actual'], self.etapa.id)
         self.assertEqual(serializer.data['etapa_nombre'], self.etapa.nombre)
 
-    def test_serializer_includes_ru_with_fallback_dash(self):
+    def test_serializer_includes_tutor_and_ru(self):
         serializer = PostulacionListSerializer(self.postulacion)
 
+        self.assertEqual(serializer.data['tutor'], 'Dr. Gómez')
         self.assertEqual(serializer.data['ru'], 'COD-001')
 
         self.postulante.codigo_estudiante = ''
